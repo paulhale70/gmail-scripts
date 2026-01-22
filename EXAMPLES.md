@@ -194,6 +194,75 @@ category:promotions has:attachment larger:1M
 subject:"order confirmation" OR subject:"receipt" older_than:90d is:read
 ```
 
+## Duplicate Detection Examples
+
+### Find Exact Duplicates
+
+```javascript
+// Default configuration finds duplicates within 5 minutes
+findDuplicateEmails(90);
+
+// Stricter matching - within 1 minute
+CONFIG.DUPLICATE_TIME_WINDOW = 60;
+findDuplicateEmails(90);
+
+// Looser matching - within 30 minutes
+CONFIG.DUPLICATE_TIME_WINDOW = 1800;
+findDuplicateEmails(90);
+```
+
+### Find Duplicates from Specific Sender
+
+```javascript
+function findDuplicatesFromDomain(domain, days = 90) {
+  // First find all duplicates
+  findDuplicateEmails(days);
+
+  // Filter the results
+  const sheet = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName('Duplicate Emails');
+  const data = sheet.getDataRange().getValues();
+
+  // Count duplicates from domain
+  let count = 0;
+  for (let i = 2; i < data.length; i++) {
+    if (data[i][3].includes(domain)) {
+      count++;
+    }
+  }
+
+  Logger.log(`Found ${count} duplicates from ${domain}`);
+}
+
+// Usage:
+findDuplicatesFromDomain('amazon.com', 180);
+```
+
+### Auto-Delete All Newsletter Duplicates
+
+```javascript
+function cleanupNewsletterDuplicates() {
+  findDuplicateEmails(90);
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName('Duplicate Emails');
+  const data = sheet.getDataRange().getValues();
+
+  // Uncheck all, then check only newsletter duplicates
+  for (let i = 2; i < data.length; i++) {
+    const subject = data[i][2].toLowerCase();
+    const isNewsletter = subject.includes('newsletter') ||
+                        subject.includes('digest') ||
+                        subject.includes('update');
+
+    sheet.getRange(i + 1, 1).setValue(isNewsletter);
+  }
+
+  // Now run cleanup
+  cleanUpDuplicates();
+}
+```
+
 ## Example Analysis Workflows
 
 ### Workflow 1: Monthly Inbox Cleanup

@@ -30,6 +30,13 @@ A comprehensive Google Apps Script for analyzing, managing, and automating your 
 - Clean up large attachments
 - Configure multiple criteria-based rules
 
+### 🔄 Duplicate Email Detection
+- Find emails with same subject + sender + similar time
+- Identify forwarded email chains
+- Detect CC'd/BCC'd duplicates across threads
+- Bulk delete or archive duplicate emails
+- Free up Gmail storage space
+
 ### 📈 Custom Reports
 - Comprehensive inbox statistics
 - Top sender domains analysis
@@ -187,6 +194,47 @@ Generates a comprehensive statistical report including:
 
 **Use Case:** Understand your email patterns and optimize your inbox management strategy.
 
+### 🔄 Find Duplicate Emails
+
+**Menu:** Gmail Analyzer > 🔄 Find Duplicate Emails
+
+Scans your inbox for duplicate emails and groups them for review:
+- **Exact Duplicates:** Same sender, subject, and timestamp
+- **Near Duplicates:** Same sender/subject within 5 minutes
+- **Forwarded Chains:** Multiple "Fwd:" versions of same email
+- **CC'd/BCC'd Duplicates:** Same email received via different methods
+
+**Output:** Creates/updates "Duplicate Emails" sheet with:
+- Interactive checkboxes for selection (oldest unchecked by default)
+- Duplicate type classification
+- Storage space calculations
+- Color-coded groups for easy review
+
+**Use Case:** Find and remove duplicate emails to free up Gmail storage and clean up your inbox.
+
+### 🧹 Clean Up Duplicates
+
+**Menu:** Gmail Analyzer > 🧹 Clean Up Duplicates
+
+**Prerequisites:** Run "Find Duplicate Emails" first
+
+**Steps:**
+1. Review the "Duplicate Emails" sheet
+2. Adjust checkboxes (checked = will be removed, unchecked = keep)
+3. Run this function from the menu
+4. Confirm the action
+5. Choose to DELETE (move to trash) or ARCHIVE
+
+**Safety Features:**
+- Oldest email in each group is kept by default
+- Confirmation dialog before any action
+- Option to archive instead of delete
+- Detailed summary of actions taken
+
+**Use Case:** Bulk remove selected duplicates to reclaim storage space and organize your inbox.
+
+**See Also:** Check `DUPLICATE_DETECTION.md` for detailed guide and advanced usage.
+
 ## Configuration
 
 You can modify the configuration constants at the top of the script:
@@ -197,6 +245,8 @@ const CONFIG = {
   DAYS_TO_ANALYZE: 90,        // Default days to analyze
   BATCH_SIZE: 100,            // Batch size for processing
   REPORT_FOLDER: 'Gmail Reports', // Folder name for reports
+  DUPLICATE_TIME_WINDOW: 300, // Seconds to consider emails as duplicates (5 min)
+  SIMILARITY_THRESHOLD: 0.85  // Subject similarity threshold (0-1)
 };
 ```
 
@@ -217,6 +267,9 @@ exportEmailsToCSV(7);
 
 // Generate report for last 180 days
 generateInboxReport(180);
+
+// Find duplicates in last 60 days
+findDuplicateEmails(60);
 ```
 
 ### Automated Scheduling

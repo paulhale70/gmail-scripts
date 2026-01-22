@@ -55,6 +55,12 @@ Get started with Gmail Analyzer in 5 minutes!
 3. View "Inbox Statistics" sheet
 4. See when you receive most emails!
 
+### Task 5: Find Duplicate Emails
+1. Click **Gmail Analyzer** → **🔄 Find Duplicate Emails**
+2. Wait for analysis to complete
+3. View "Duplicate Emails" sheet
+4. See storage space you can reclaim!
+
 ## Common Scenarios
 
 ### Scenario 1: "I want to unsubscribe from 50+ newsletters"
@@ -90,7 +96,19 @@ Get started with Gmail Analyzer in 5 minutes!
 5. Back to sheet: Gmail Analyzer → Analyze Email Patterns
 ```
 
-### Scenario 4: "Daily automatic cleanup"
+### Scenario 4: "Clean up duplicate emails"
+
+```
+1. Gmail Analyzer → Find Duplicate Emails
+2. Wait for analysis (30-60 seconds)
+3. Open "Duplicate Emails" sheet
+4. Review groups (oldest in each group unchecked by default)
+5. Adjust checkboxes if needed
+6. Gmail Analyzer → Clean Up Duplicates
+7. Choose DELETE or ARCHIVE
+```
+
+### Scenario 5: "Daily automatic cleanup"
 
 ```
 1. Extensions → Apps Script

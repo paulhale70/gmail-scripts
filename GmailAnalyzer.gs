@@ -7,6 +7,7 @@
  * - Export email data to CSV
  * - Auto-delete or archive based on criteria
  * - Generate custom reports on inbox statistics
+ * - Find and clean up duplicate emails
  */
 
 // Configuration
@@ -15,6 +16,8 @@ const CONFIG = {
   DAYS_TO_ANALYZE: 90,        // Default days to analyze
   BATCH_SIZE: 100,            // Batch size for processing
   REPORT_FOLDER: 'Gmail Reports', // Folder name for reports
+  DUPLICATE_TIME_WINDOW: 300, // Seconds to consider emails as duplicates (5 min)
+  SIMILARITY_THRESHOLD: 0.85  // Subject similarity threshold (0-1)
 };
 
 /**
@@ -27,6 +30,10 @@ function onOpen() {
     .addItem('📧 Export to CSV', 'exportEmailsToCSV')
     .addItem('🔍 Find Unsubscribe Links', 'findUnsubscribeEmails')
     .addItem('🗑️ Bulk Unsubscribe', 'bulkUnsubscribe')
+    .addSeparator()
+    .addItem('🔄 Find Duplicate Emails', 'findDuplicateEmails')
+    .addItem('🧹 Clean Up Duplicates', 'cleanUpDuplicates')
+    .addSeparator()
     .addItem('🗂️ Auto Archive/Delete', 'autoManageEmails')
     .addItem('📈 Generate Reports', 'generateInboxReport')
     .addToUi();
@@ -419,6 +426,329 @@ function setupDefaultRules(sheet) {
   sheet.getRange(2, 1, defaultRules.length, defaultRules[0].length).setValues(defaultRules);
   sheet.getRange(2, 4, defaultRules.length, 1).insertCheckboxes();
   sheet.autoResizeColumns(1, 4);
+}
+
+// ==================== DUPLICATE EMAIL DETECTION ====================
+
+/**
+ * Find duplicate emails based on multiple criteria
+ */
+function findDuplicateEmails(daysBack = CONFIG.DAYS_TO_ANALYZE) {
+  const sheet = getOrCreateSheet('Duplicate Emails');
+  sheet.clear();
+
+  const headers = [
+    ['Select', 'Type', 'Subject', 'From Email', 'From Name', 'Date', 'Size',
+     'Message Count', 'Thread ID', 'Message IDs', 'Group ID']
+  ];
+  sheet.getRange(1, 1, 1, headers[0].length).setValues(headers)
+    .setFontWeight('bold')
+    .setBackground('#9c27b0')
+    .setFontColor('white');
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+  const query = `after:${formatDateForQuery(cutoffDate)}`;
+  const threads = GmailApp.search(query, 0, CONFIG.MAX_THREADS);
+
+  Logger.log(`Analyzing ${threads.length} threads for duplicates...`);
+
+  // Build email index for duplicate detection
+  const emailIndex = {};
+  const duplicateGroups = [];
+  let groupId = 1;
+
+  threads.forEach(thread => {
+    const messages = thread.getMessages();
+
+    messages.forEach(message => {
+      const from = message.getFrom();
+      const email = extractEmail(from);
+      const name = extractName(from);
+      const subject = normalizeSubject(message.getSubject());
+      const date = message.getDate();
+      const messageId = message.getId();
+
+      // Create index key for exact duplicates
+      const exactKey = `${email}|${subject}|${Math.floor(date.getTime() / 1000)}`;
+
+      // Create index key for near duplicates (same subject+sender, close time)
+      const timeWindow = Math.floor(date.getTime() / (1000 * CONFIG.DUPLICATE_TIME_WINDOW));
+      const nearKey = `${email}|${subject}|${timeWindow}`;
+
+      if (!emailIndex[exactKey]) {
+        emailIndex[exactKey] = [];
+      }
+      if (!emailIndex[nearKey]) {
+        emailIndex[nearKey] = [];
+      }
+
+      emailIndex[exactKey].push({
+        type: 'EXACT',
+        subject: message.getSubject(),
+        from: email,
+        name: name,
+        date: date,
+        size: message.getBody().length,
+        threadId: thread.getId(),
+        messageId: messageId,
+        key: exactKey
+      });
+
+      emailIndex[nearKey].push({
+        type: 'NEAR',
+        subject: message.getSubject(),
+        from: email,
+        name: name,
+        date: date,
+        size: message.getBody().length,
+        threadId: thread.getId(),
+        messageId: messageId,
+        key: nearKey
+      });
+    });
+  });
+
+  // Find duplicates and group them
+  const processedKeys = new Set();
+
+  Object.keys(emailIndex).forEach(key => {
+    const messages = emailIndex[key];
+
+    if (messages.length > 1 && !processedKeys.has(key)) {
+      processedKeys.add(key);
+
+      // Sort by date (oldest first)
+      messages.sort((a, b) => a.date - b.date);
+
+      // Determine duplicate type
+      const type = messages[0].type;
+      let duplicateType = type;
+
+      // Check for forwarded chains
+      if (messages[0].subject.toLowerCase().includes('fwd:') ||
+          messages[0].subject.toLowerCase().includes('fw:')) {
+        duplicateType = 'FORWARDED';
+      }
+
+      // Check for CC'd duplicates (different thread IDs but same content)
+      const uniqueThreads = new Set(messages.map(m => m.threadId));
+      if (uniqueThreads.size > 1) {
+        duplicateType = 'CC/BCC';
+      }
+
+      duplicateGroups.push({
+        groupId: groupId++,
+        type: duplicateType,
+        messages: messages
+      });
+    }
+  });
+
+  // Prepare data for sheet
+  const data = [];
+
+  duplicateGroups.forEach(group => {
+    group.messages.forEach((msg, index) => {
+      const isKeep = index === 0; // Keep oldest by default
+
+      data.push([
+        !isKeep, // Select for deletion (uncheck oldest to keep it)
+        group.type,
+        msg.subject,
+        msg.from,
+        msg.name,
+        msg.date,
+        formatBytes(msg.size),
+        group.messages.length,
+        msg.threadId,
+        msg.messageId,
+        group.groupId
+      ]);
+    });
+  });
+
+  // Sort by group ID and date
+  data.sort((a, b) => {
+    if (a[10] !== b[10]) return a[10] - b[10]; // Group ID
+    return a[5] - b[5]; // Date
+  });
+
+  if (data.length > 0) {
+    sheet.getRange(2, 1, data.length, data[0].length).setValues(data);
+    sheet.getRange(2, 1, data.length, 1).insertCheckboxes();
+
+    // Color-code by group for easier visualization
+    for (let i = 0; i < data.length; i++) {
+      const groupId = data[i][10];
+      const color = groupId % 2 === 0 ? '#f3f3f3' : '#ffffff';
+      sheet.getRange(i + 2, 1, 1, data[0].length).setBackground(color);
+    }
+
+    sheet.autoResizeColumns(1, data[0].length);
+  }
+
+  const totalDuplicates = data.length;
+  const uniqueGroups = duplicateGroups.length;
+  const potentialSavings = data.reduce((sum, row) => sum + parseSizeToBytes(row[6]), 0);
+
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    `Found ${totalDuplicates} duplicate emails in ${uniqueGroups} groups. Potential space savings: ${formatBytes(potentialSavings)}`,
+    'Duplicate Detection Complete',
+    10
+  );
+
+  // Add summary at the top
+  sheet.insertRowBefore(1);
+  sheet.getRange(1, 1, 1, 6).merge()
+    .setValue(`SUMMARY: ${totalDuplicates} duplicates found in ${uniqueGroups} groups | Potential savings: ${formatBytes(potentialSavings)} | Oldest email in each group is unchecked by default`)
+    .setBackground('#9c27b0')
+    .setFontColor('white')
+    .setFontWeight('bold');
+
+  return duplicateGroups;
+}
+
+/**
+ * Clean up duplicate emails based on user selection
+ */
+function cleanUpDuplicates() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Duplicate Emails');
+
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert('Please run "Find Duplicate Emails" first!');
+    return;
+  }
+
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    'Confirm Cleanup',
+    'This will delete all SELECTED duplicate emails. Emails that are UNCHECKED will be kept. Continue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    ui.alert('Cleanup cancelled.');
+    return;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  let deleteCount = 0;
+  let archiveCount = 0;
+  let failCount = 0;
+  const processedThreads = new Set();
+
+  // Ask user for action preference
+  const actionResponse = ui.alert(
+    'Choose Action',
+    'What would you like to do with selected duplicates?',
+    ui.ButtonSet.YES_NO_CANCEL
+  );
+
+  let action = 'DELETE';
+  if (actionResponse === ui.Button.YES) {
+    action = 'DELETE';
+  } else if (actionResponse === ui.Button.NO) {
+    action = 'ARCHIVE';
+  } else {
+    ui.alert('Cleanup cancelled.');
+    return;
+  }
+
+  // Start from row 3 (skip header and summary)
+  for (let i = 2; i < data.length; i++) {
+    const isSelected = data[i][0];
+
+    if (isSelected === true) {
+      const threadId = data[i][8];
+
+      // Skip if already processed
+      if (processedThreads.has(threadId)) {
+        continue;
+      }
+
+      try {
+        const thread = GmailApp.getThreadById(threadId);
+
+        if (thread) {
+          if (action === 'DELETE') {
+            thread.moveToTrash();
+            deleteCount++;
+          } else if (action === 'ARCHIVE') {
+            thread.moveToArchive();
+            archiveCount++;
+          }
+          processedThreads.add(threadId);
+        }
+      } catch (e) {
+        Logger.log(`Error processing thread ${threadId}: ${e}`);
+        failCount++;
+      }
+    }
+  }
+
+  let message = '';
+  if (action === 'DELETE') {
+    message = `Deleted ${deleteCount} duplicate emails.`;
+  } else {
+    message = `Archived ${archiveCount} duplicate emails.`;
+  }
+
+  if (failCount > 0) {
+    message += ` Failed to process ${failCount} emails.`;
+  }
+
+  SpreadsheetApp.getActiveSpreadsheet().toast(message, 'Cleanup Complete', 5);
+}
+
+/**
+ * Normalize subject line for duplicate detection
+ */
+function normalizeSubject(subject) {
+  if (!subject) return '';
+
+  return subject
+    .replace(/^(Re:\s*)+/gi, '')      // Remove Re:
+    .replace(/^(Fwd?:\s*)+/gi, '')    // Remove Fwd:/Fw:
+    .replace(/\s+/g, ' ')             // Normalize whitespace
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Format bytes to human-readable string
+ */
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+/**
+ * Parse size string back to bytes
+ */
+function parseSizeToBytes(sizeStr) {
+  if (!sizeStr) return 0;
+
+  const match = sizeStr.match(/^([\d.]+)\s*(\w+)$/);
+  if (!match) return 0;
+
+  const value = parseFloat(match[1]);
+  const unit = match[2];
+
+  const multipliers = {
+    'Bytes': 1,
+    'KB': 1024,
+    'MB': 1024 * 1024,
+    'GB': 1024 * 1024 * 1024
+  };
+
+  return Math.round(value * (multipliers[unit] || 1));
 }
 
 // ==================== CUSTOM REPORTS ====================
