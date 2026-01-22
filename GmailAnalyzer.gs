@@ -8,6 +8,7 @@
  * - Auto-delete or archive based on criteria
  * - Generate custom reports on inbox statistics
  * - Find and clean up duplicate emails
+ * - Manage attachments with Drive backup
  */
 
 // Configuration
@@ -17,7 +18,10 @@ const CONFIG = {
   BATCH_SIZE: 100,            // Batch size for processing
   REPORT_FOLDER: 'Gmail Reports', // Folder name for reports
   DUPLICATE_TIME_WINDOW: 300, // Seconds to consider emails as duplicates (5 min)
-  SIMILARITY_THRESHOLD: 0.85  // Subject similarity threshold (0-1)
+  SIMILARITY_THRESHOLD: 0.85, // Subject similarity threshold (0-1)
+  DRIVE_FOLDER_NAME: 'Gmail Attachments Backup', // Drive folder for backups
+  MAX_ATTACHMENT_SIZE: 25,    // Max size in MB for individual backup
+  MIN_ATTACHMENT_SIZE: 0.01   // Min size in MB to include (10KB)
 };
 
 /**
@@ -33,6 +37,10 @@ function onOpen() {
     .addSeparator()
     .addItem('🔄 Find Duplicate Emails', 'findDuplicateEmails')
     .addItem('🧹 Clean Up Duplicates', 'cleanUpDuplicates')
+    .addSeparator()
+    .addItem('📎 Analyze Attachments', 'analyzeAttachments')
+    .addItem('💾 Backup to Drive', 'backupAttachmentsToDrive')
+    .addItem('🔍 Find Duplicate Attachments', 'findDuplicateAttachments')
     .addSeparator()
     .addItem('🗂️ Auto Archive/Delete', 'autoManageEmails')
     .addItem('📈 Generate Reports', 'generateInboxReport')
@@ -749,6 +757,373 @@ function parseSizeToBytes(sizeStr) {
   };
 
   return Math.round(value * (multipliers[unit] || 1));
+}
+
+// ==================== ATTACHMENT MANAGEMENT ====================
+
+/**
+ * Analyze all attachments in inbox
+ */
+function analyzeAttachments(daysBack = CONFIG.DAYS_TO_ANALYZE) {
+  const sheet = getOrCreateSheet('Attachment Analysis');
+  sheet.clear();
+
+  const headers = [
+    ['Select', 'Filename', 'Type', 'Size', 'Sender Email', 'Sender Name',
+     'Subject', 'Date', 'Thread ID', 'Message ID', 'Hash']
+  ];
+  sheet.getRange(1, 1, 1, headers[0].length).setValues(headers)
+    .setFontWeight('bold')
+    .setBackground('#ff6f00')
+    .setFontColor('white');
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+  const query = `has:attachment after:${formatDateForQuery(cutoffDate)}`;
+  const threads = GmailApp.search(query, 0, CONFIG.MAX_THREADS);
+
+  Logger.log(`Analyzing attachments from ${threads.length} threads...`);
+
+  const data = [];
+  let totalSize = 0;
+  const fileTypes = {};
+  const senderStats = {};
+
+  threads.forEach(thread => {
+    const messages = thread.getMessages();
+
+    messages.forEach(message => {
+      const attachments = message.getAttachments();
+
+      if (attachments.length === 0) return;
+
+      const from = message.getFrom();
+      const email = extractEmail(from);
+      const name = extractName(from);
+      const subject = message.getSubject();
+      const date = message.getDate();
+
+      attachments.forEach(attachment => {
+        const filename = attachment.getName();
+        const size = attachment.getSize();
+        const sizeInMB = size / (1024 * 1024);
+
+        // Skip very small files
+        if (sizeInMB < CONFIG.MIN_ATTACHMENT_SIZE) return;
+
+        const contentType = attachment.getContentType();
+        const extension = getFileExtension(filename);
+        const hash = getAttachmentHash(attachment);
+
+        totalSize += size;
+
+        // Track file types
+        fileTypes[extension] = (fileTypes[extension] || 0) + 1;
+
+        // Track sender stats
+        if (!senderStats[email]) {
+          senderStats[email] = { count: 0, totalSize: 0 };
+        }
+        senderStats[email].count++;
+        senderStats[email].totalSize += size;
+
+        data.push([
+          false, // Checkbox for selection
+          filename,
+          extension,
+          formatBytes(size),
+          email,
+          name,
+          subject,
+          date,
+          thread.getId(),
+          message.getId(),
+          hash
+        ]);
+      });
+    });
+  });
+
+  // Sort by size (largest first)
+  data.sort((a, b) => parseSizeToBytes(b[3]) - parseSizeToBytes(a[3]));
+
+  if (data.length > 0) {
+    sheet.getRange(2, 1, data.length, data[0].length).setValues(data);
+    sheet.getRange(2, 1, data.length, 1).insertCheckboxes();
+    sheet.autoResizeColumns(1, data[0].length);
+  }
+
+  // Add summary
+  sheet.insertRowBefore(1);
+  const summary = `SUMMARY: ${data.length} attachments found | Total size: ${formatBytes(totalSize)} | Types: ${Object.keys(fileTypes).length}`;
+  sheet.getRange(1, 1, 1, 6).merge()
+    .setValue(summary)
+    .setBackground('#ff6f00')
+    .setFontColor('white')
+    .setFontWeight('bold');
+
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    `Found ${data.length} attachments totaling ${formatBytes(totalSize)}`,
+    'Attachment Analysis Complete',
+    5
+  );
+
+  return data;
+}
+
+/**
+ * Backup selected attachments to Google Drive
+ */
+function backupAttachmentsToDrive() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Attachment Analysis');
+
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert('Please run "Analyze Attachments" first!');
+    return;
+  }
+
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    'Backup to Drive',
+    'This will backup all SELECTED attachments to Google Drive. Continue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    return;
+  }
+
+  // Get or create Drive folder
+  const folder = getOrCreateDriveFolder(CONFIG.DRIVE_FOLDER_NAME);
+
+  const data = sheet.getDataRange().getValues();
+  let backupCount = 0;
+  let skipCount = 0;
+  let errorCount = 0;
+  let totalSize = 0;
+
+  // Start from row 3 (skip summary and header)
+  for (let i = 2; i < data.length; i++) {
+    const isSelected = data[i][0];
+
+    if (isSelected === true) {
+      const filename = data[i][1];
+      const size = parseSizeToBytes(data[i][3]);
+      const messageId = data[i][9];
+
+      // Skip if too large
+      if (size > CONFIG.MAX_ATTACHMENT_SIZE * 1024 * 1024) {
+        Logger.log(`Skipping ${filename} - too large (${formatBytes(size)})`);
+        skipCount++;
+        continue;
+      }
+
+      try {
+        // Get the message and attachment
+        const message = GmailApp.getMessageById(messageId);
+        if (!message) {
+          errorCount++;
+          continue;
+        }
+
+        const attachments = message.getAttachments();
+        const attachment = attachments.find(a => a.getName() === filename);
+
+        if (attachment) {
+          // Create subfolder by sender
+          const senderEmail = data[i][4];
+          const senderFolder = getOrCreateDriveFolder(senderEmail, folder);
+
+          // Check if file already exists
+          const existingFiles = senderFolder.getFilesByName(filename);
+          if (existingFiles.hasNext()) {
+            // File exists, add timestamp
+            const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss');
+            const newFilename = `${timestamp}_${filename}`;
+            senderFolder.createFile(attachment).setName(newFilename);
+          } else {
+            senderFolder.createFile(attachment);
+          }
+
+          backupCount++;
+          totalSize += size;
+          Logger.log(`Backed up: ${filename} (${formatBytes(size)})`);
+        }
+      } catch (e) {
+        Logger.log(`Error backing up ${filename}: ${e}`);
+        errorCount++;
+      }
+    }
+  }
+
+  let message = `Backed up ${backupCount} files (${formatBytes(totalSize)})`;
+  if (skipCount > 0) message += `\nSkipped ${skipCount} (too large)`;
+  if (errorCount > 0) message += `\nFailed ${errorCount}`;
+  message += `\n\nLocation: Drive > ${CONFIG.DRIVE_FOLDER_NAME}`;
+
+  ui.alert('Backup Complete', message, ui.ButtonSet.OK);
+}
+
+/**
+ * Find duplicate attachments based on content hash
+ */
+function findDuplicateAttachments(daysBack = CONFIG.DAYS_TO_ANALYZE) {
+  const sheet = getOrCreateSheet('Duplicate Attachments');
+  sheet.clear();
+
+  const headers = [
+    ['Select', 'Filename', 'Type', 'Size', 'Count', 'Total Size',
+     'Senders', 'First Date', 'Last Date', 'Hash']
+  ];
+  sheet.getRange(1, 1, 1, headers[0].length).setValues(headers)
+    .setFontWeight('bold')
+    .setBackground('#e91e63')
+    .setFontColor('white');
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+  const query = `has:attachment after:${formatDateForQuery(cutoffDate)}`;
+  const threads = GmailApp.search(query, 0, CONFIG.MAX_THREADS);
+
+  Logger.log(`Scanning for duplicate attachments in ${threads.length} threads...`);
+
+  const attachmentIndex = {};
+
+  threads.forEach(thread => {
+    const messages = thread.getMessages();
+
+    messages.forEach(message => {
+      const attachments = message.getAttachments();
+
+      if (attachments.length === 0) return;
+
+      const from = message.getFrom();
+      const email = extractEmail(from);
+      const date = message.getDate();
+
+      attachments.forEach(attachment => {
+        const filename = attachment.getName();
+        const size = attachment.getSize();
+        const hash = getAttachmentHash(attachment);
+
+        if (!attachmentIndex[hash]) {
+          attachmentIndex[hash] = {
+            filename: filename,
+            type: getFileExtension(filename),
+            size: size,
+            count: 0,
+            senders: new Set(),
+            dates: []
+          };
+        }
+
+        attachmentIndex[hash].count++;
+        attachmentIndex[hash].senders.add(email);
+        attachmentIndex[hash].dates.push(date);
+      });
+    });
+  });
+
+  // Find duplicates (count > 1)
+  const data = [];
+  let totalWaste = 0;
+
+  Object.keys(attachmentIndex).forEach(hash => {
+    const att = attachmentIndex[hash];
+
+    if (att.count > 1) {
+      const totalSize = att.size * att.count;
+      const wastedSize = att.size * (att.count - 1);
+      totalWaste += wastedSize;
+
+      att.dates.sort((a, b) => a - b);
+      const firstDate = att.dates[0];
+      const lastDate = att.dates[att.dates.length - 1];
+
+      data.push([
+        false, // Checkbox
+        att.filename,
+        att.type,
+        formatBytes(att.size),
+        att.count,
+        formatBytes(totalSize),
+        Array.from(att.senders).join(', '),
+        firstDate,
+        lastDate,
+        hash
+      ]);
+    }
+  });
+
+  // Sort by total size (largest waste first)
+  data.sort((a, b) => parseSizeToBytes(b[5]) - parseSizeToBytes(a[5]));
+
+  if (data.length > 0) {
+    sheet.getRange(2, 1, data.length, data[0].length).setValues(data);
+    sheet.getRange(2, 1, data.length, 1).insertCheckboxes();
+    sheet.autoResizeColumns(1, data[0].length);
+  }
+
+  // Add summary
+  sheet.insertRowBefore(1);
+  const summary = `SUMMARY: ${data.length} duplicate attachments found | Wasted space: ${formatBytes(totalWaste)} | Keep 1 copy of each to save space`;
+  sheet.getRange(1, 1, 1, 6).merge()
+    .setValue(summary)
+    .setBackground('#e91e63')
+    .setFontColor('white')
+    .setFontWeight('bold');
+
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    `Found ${data.length} duplicate attachments wasting ${formatBytes(totalWaste)}`,
+    'Duplicate Detection Complete',
+    5
+  );
+
+  return data;
+}
+
+/**
+ * Get or create a Drive folder
+ */
+function getOrCreateDriveFolder(folderName, parentFolder = null) {
+  const parent = parentFolder || DriveApp.getRootFolder();
+
+  // Check if folder exists
+  const folders = parent.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  // Create new folder
+  return parent.createFolder(folderName);
+}
+
+/**
+ * Get file extension from filename
+ */
+function getFileExtension(filename) {
+  if (!filename) return 'unknown';
+
+  const parts = filename.split('.');
+  if (parts.length < 2) return 'no-ext';
+
+  return parts[parts.length - 1].toLowerCase();
+}
+
+/**
+ * Generate a simple hash for attachment content
+ */
+function getAttachmentHash(attachment) {
+  // Use filename + size as a simple hash
+  // For better duplicate detection, we could use content hash
+  // but that requires reading the entire file which is slow
+  const name = attachment.getName();
+  const size = attachment.getSize();
+  const type = attachment.getContentType();
+
+  return `${name}|${size}|${type}`;
 }
 
 // ==================== CUSTOM REPORTS ====================

@@ -11,6 +11,7 @@ A comprehensive Google Apps Script for analyzing, managing, and automating your 
 - **[⚡ Quick Start](QUICKSTART.md)** - Get started in 5 minutes
 - **[📖 Full Manual](README.md)** - You are here! Complete documentation
 - **[🔄 Duplicate Detection](DUPLICATE_DETECTION.md)** - Detailed guide for finding and cleaning duplicates
+- **[📎 Attachment Manager](ATTACHMENT_MANAGER.md)** - Manage and backup attachments to Google Drive
 - **[💡 Examples](EXAMPLES.md)** - Advanced examples and custom scripts
 
 **Choose your path:**
@@ -55,6 +56,14 @@ A comprehensive Google Apps Script for analyzing, managing, and automating your 
 - Detect CC'd/BCC'd duplicates across threads
 - Bulk delete or archive duplicate emails
 - Free up Gmail storage space
+
+### 📎 Attachment Manager
+- Analyze all attachments (size, type, sender)
+- Backup important files to Google Drive
+- Find duplicate attachments
+- Auto-organize by sender in Drive folders
+- Track storage usage by attachments
+- Free up space by removing duplicates
 
 ### 📈 Custom Reports
 - Comprehensive inbox statistics
@@ -254,6 +263,73 @@ Scans your inbox for duplicate emails and groups them for review:
 
 **See Also:** Check `DUPLICATE_DETECTION.md` for detailed guide and advanced usage.
 
+### 📎 Analyze Attachments
+
+**Menu:** Gmail Analyzer > 📎 Analyze Attachments
+
+Scans your inbox for all attachments and creates a detailed inventory:
+- Lists all attachments with size, type, and sender
+- Calculates total storage used by attachments
+- Sorts by size (largest first)
+- Shows file types distribution
+- Enables selective backup to Drive
+
+**Output:** Creates/updates "Attachment Analysis" sheet with:
+- Interactive checkboxes for backup selection
+- Filename, type, and size information
+- Sender details and email subject
+- Storage summary and statistics
+
+**Use Case:** Understand what's using your Gmail storage and identify files to backup or remove.
+
+### 💾 Backup to Drive
+
+**Menu:** Gmail Analyzer > 💾 Backup to Drive
+
+**Prerequisites:** Run "Analyze Attachments" first
+
+Backs up selected attachments to Google Drive:
+- Creates "Gmail Attachments Backup" folder
+- Auto-organizes by sender in subfolders
+- Prevents overwrites with timestamp naming
+- Skips files over size limit (25MB default)
+- Reports success, skips, and errors
+
+**Steps:**
+1. Select files in "Attachment Analysis" sheet (check boxes)
+2. Run this function from the menu
+3. Confirm backup operation
+4. Find files in Drive > Gmail Attachments Backup
+
+**Safety Features:**
+- Configurable max file size
+- Duplicate detection with timestamps
+- Organized folder structure
+- Detailed completion report
+
+**Use Case:** Save important attachments to Drive before deleting old emails, create offline backup of files.
+
+### 🔍 Find Duplicate Attachments
+
+**Menu:** Gmail Analyzer > 🔍 Find Duplicate Attachments
+
+Finds attachments that appear multiple times across different emails:
+- Identifies identical files by name, size, and type
+- Calculates wasted storage space
+- Shows who sent each copy
+- Groups duplicates together
+- Reports potential savings
+
+**Output:** Creates/updates "Duplicate Attachments" sheet with:
+- Duplicate filename and count
+- Total size wasted
+- List of senders who sent copies
+- Date range of duplicates
+
+**Use Case:** Free up storage by removing duplicate files, understand which senders send the same files repeatedly.
+
+**See Also:** Check `ATTACHMENT_MANAGER.md` for detailed guide, advanced features, and automation examples.
+
 ## Configuration
 
 You can modify the configuration constants at the top of the script:
@@ -265,7 +341,10 @@ const CONFIG = {
   BATCH_SIZE: 100,            // Batch size for processing
   REPORT_FOLDER: 'Gmail Reports', // Folder name for reports
   DUPLICATE_TIME_WINDOW: 300, // Seconds to consider emails as duplicates (5 min)
-  SIMILARITY_THRESHOLD: 0.85  // Subject similarity threshold (0-1)
+  SIMILARITY_THRESHOLD: 0.85, // Subject similarity threshold (0-1)
+  DRIVE_FOLDER_NAME: 'Gmail Attachments Backup', // Drive folder for backups
+  MAX_ATTACHMENT_SIZE: 25,    // Max size in MB for individual backup
+  MIN_ATTACHMENT_SIZE: 0.01   // Min size in MB to include (10KB)
 };
 ```
 

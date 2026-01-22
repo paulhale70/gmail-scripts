@@ -83,6 +83,7 @@ Step 4: Customize!
 |------|---------|--------------|
 | **[README.md](README.md)** | Complete manual | Reference for all features |
 | **[DUPLICATE_DETECTION.md](DUPLICATE_DETECTION.md)** | Duplicate email guide | When using duplicate feature |
+| **[ATTACHMENT_MANAGER.md](ATTACHMENT_MANAGER.md)** | Attachment & Drive backup | When managing attachments |
 | **[EXAMPLES.md](EXAMPLES.md)** | Advanced examples & scripts | For customization |
 
 ### Code Files
@@ -238,7 +239,7 @@ Step 4: Customize!
 
 ## 📊 What's Included
 
-### 6 Main Features
+### 7 Main Features
 
 1. **📊 Email Pattern Analysis**
    - Who emails you most
@@ -255,18 +256,25 @@ Step 4: Customize!
    - Open in Excel/Python
    - Deep analysis
 
-4. **🔄 Duplicate Detection** (NEW!)
+4. **🔄 Duplicate Detection**
    - Find exact duplicates
    - Find near duplicates
    - Forwarded chains
    - CC'd/BCC'd duplicates
 
-5. **🗂️ Auto-Manage**
+5. **📎 Attachment Manager** (NEW!)
+   - Analyze all attachments
+   - Backup to Google Drive
+   - Find duplicate files
+   - Free up storage
+   - Auto-organize by sender
+
+6. **🗂️ Auto-Manage**
    - Custom cleanup rules
    - Scheduled automation
    - Smart filtering
 
-6. **📈 Reports**
+7. **📈 Reports**
    - Inbox statistics
    - Domain analysis
    - Time patterns

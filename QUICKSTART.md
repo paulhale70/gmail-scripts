@@ -61,6 +61,12 @@ Get started with Gmail Analyzer in 5 minutes!
 3. View "Duplicate Emails" sheet
 4. See storage space you can reclaim!
 
+### Task 6: Manage Attachments
+1. Click **Gmail Analyzer** → **📎 Analyze Attachments**
+2. Wait for analysis (may take 1-2 minutes)
+3. View "Attachment Analysis" sheet
+4. See what's using your storage!
+
 ## Common Scenarios
 
 ### Scenario 1: "I want to unsubscribe from 50+ newsletters"
@@ -108,7 +114,19 @@ Get started with Gmail Analyzer in 5 minutes!
 7. Choose DELETE or ARCHIVE
 ```
 
-### Scenario 5: "Daily automatic cleanup"
+### Scenario 5: "Backup important attachments"
+
+```
+1. Gmail Analyzer → Analyze Attachments
+2. Wait for analysis
+3. Open "Attachment Analysis" sheet
+4. Check boxes next to important files
+5. Gmail Analyzer → Backup to Drive
+6. Confirm backup
+7. Find files in Drive > Gmail Attachments Backup
+```
+
+### Scenario 6: "Daily automatic cleanup"
 
 ```
 1. Extensions → Apps Script
