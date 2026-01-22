@@ -2,6 +2,25 @@
 
 A comprehensive Google Apps Script for analyzing, managing, and automating your Gmail inbox.
 
+## 📚 Documentation Guide
+
+**New to GitHub or Google Apps Script?** Start here:
+
+- **[🚀 Beginner's Guide](BEGINNER_GUIDE.md)** - Complete step-by-step installation guide for beginners
+- **[📂 GitHub Guide](GITHUB_GUIDE.md)** - How to download and navigate GitHub (no account needed!)
+- **[⚡ Quick Start](QUICKSTART.md)** - Get started in 5 minutes
+- **[📖 Full Manual](README.md)** - You are here! Complete documentation
+- **[🔄 Duplicate Detection](DUPLICATE_DETECTION.md)** - Detailed guide for finding and cleaning duplicates
+- **[💡 Examples](EXAMPLES.md)** - Advanced examples and custom scripts
+
+**Choose your path:**
+- **Complete Beginner?** → Read [BEGINNER_GUIDE.md](BEGINNER_GUIDE.md)
+- **Need GitHub help?** → Read [GITHUB_GUIDE.md](GITHUB_GUIDE.md)
+- **Ready to install?** → Continue reading below
+- **Want quick wins?** → Read [QUICKSTART.md](QUICKSTART.md)
+
+---
+
 ## Features
 
 ### 📊 Email Pattern Analysis
