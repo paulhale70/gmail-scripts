@@ -67,6 +67,19 @@ Get started with Gmail Analyzer in 5 minutes!
 3. View "Attachment Analysis" sheet
 4. See what's using your storage!
 
+### Task 7: Visual Dashboard
+1. Click **Gmail Analyzer** → **📊 Visual Dashboard**
+2. Wait for dashboard creation (30-60 seconds)
+3. View "Visual Dashboard" sheet
+4. See beautiful charts and graphs!
+
+### Task 8: Save a Query
+1. Click **Gmail Analyzer** → **💾 Save Current Query**
+2. Enter name: "Unread This Week"
+3. Enter query: `is:unread newer_than:7d`
+4. Add description (optional)
+5. Query saved for future use!
+
 ## Common Scenarios
 
 ### Scenario 1: "I want to unsubscribe from 50+ newsletters"

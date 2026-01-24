@@ -239,7 +239,7 @@ Step 4: Customize!
 
 ## 📊 What's Included
 
-### 7 Main Features
+### 9 Main Features
 
 1. **📊 Email Pattern Analysis**
    - Who emails you most
@@ -262,19 +262,33 @@ Step 4: Customize!
    - Forwarded chains
    - CC'd/BCC'd duplicates
 
-5. **📎 Attachment Manager** (NEW!)
+5. **📎 Attachment Manager**
    - Analyze all attachments
    - Backup to Google Drive
    - Find duplicate files
    - Free up storage
    - Auto-organize by sender
 
-6. **🗂️ Auto-Manage**
+6. **📊 Visual Dashboard** (NEW!)
+   - Interactive charts
+   - Email pattern visualization
+   - Hourly/daily distributions
+   - Summary statistics
+   - Export-ready graphs
+
+7. **🔍 Saved Queries** (NEW!)
+   - Save frequent searches
+   - Query templates
+   - Batch execution
+   - One-click access
+   - No-code building
+
+8. **🗂️ Auto-Manage**
    - Custom cleanup rules
    - Scheduled automation
    - Smart filtering
 
-7. **📈 Reports**
+9. **📈 Reports**
    - Inbox statistics
    - Domain analysis
    - Time patterns

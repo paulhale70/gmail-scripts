@@ -428,6 +428,341 @@ exportCategory('promotions', 30);
 exportCategory('social', 60);
 ```
 
+## Visual Dashboard Examples
+
+### Create Monthly Dashboard Comparison
+
+```javascript
+function compareMonthlyDashboards() {
+  // Create dashboard for this month
+  createVisualDashboard(30);
+  const thisMonth = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName('Visual Dashboard');
+  thisMonth.setName('Dashboard - This Month');
+
+  // Create dashboard for last month (days 31-60)
+  // Note: You'd need to modify query for specific date range
+  createVisualDashboard(60);
+  const lastTwoMonths = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName('Visual Dashboard');
+  lastTwoMonths.setName('Dashboard - Last 2 Months');
+
+  Logger.log('Created comparative dashboards');
+}
+```
+
+### Weekly Dashboard with Email Alert
+
+```javascript
+function weeklyDashboardWithAlert() {
+  // Create dashboard for last 7 days
+  createVisualDashboard(7);
+
+  // Send email to yourself
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const url = ss.getUrl();
+
+  MailApp.sendEmail({
+    to: Session.getActiveUser().getEmail(),
+    subject: '📊 Your Weekly Email Dashboard is Ready',
+    body: `Your weekly email dashboard has been generated!\n\nView it here: ${url}\n\nKey stats are available in the Visual Dashboard sheet.`
+  });
+
+  Logger.log('Weekly dashboard created and email sent');
+}
+
+// Set up a weekly trigger for this function:
+// Extensions > Apps Script > Triggers > Add Trigger
+// Function: weeklyDashboardWithAlert
+// Event: Time-driven, Week timer, Every Monday at 9am
+```
+
+### Dashboard for Specific Project
+
+```javascript
+function projectEmailDashboard(projectName) {
+  const sheet = getOrCreateSheet(`Dashboard - ${projectName}`);
+  sheet.clear();
+
+  // Customize query for project emails
+  const query = `subject:"${projectName}" OR label:${projectName}`;
+  const threads = GmailApp.search(query, 0, 500);
+
+  // Create custom analysis
+  const senderMap = new Map();
+  threads.forEach(thread => {
+    const messages = thread.getMessages();
+    messages.forEach(msg => {
+      const sender = msg.getFrom();
+      senderMap.set(sender, (senderMap.get(sender) || 0) + 1);
+    });
+  });
+
+  // Write to sheet and create chart
+  sheet.getRange(1, 1, 1, 2).setValues([['Sender', 'Email Count']]);
+  let row = 2;
+  senderMap.forEach((count, sender) => {
+    sheet.getRange(row, 1, 1, 2).setValues([[sender, count]]);
+    row++;
+  });
+
+  // Add pie chart
+  const chart = sheet.newChart()
+    .setChartType(Charts.ChartType.PIE)
+    .addRange(sheet.getRange(1, 1, row - 1, 2))
+    .setPosition(1, 4, 0, 0)
+    .setOption('title', `${projectName} - Email Distribution`)
+    .setOption('width', 500)
+    .setOption('height', 300)
+    .build();
+
+  sheet.insertChart(chart);
+
+  Logger.log(`Dashboard created for ${projectName}`);
+}
+
+// Usage:
+projectEmailDashboard('Project Alpha');
+projectEmailDashboard('Client ABC');
+```
+
+## Saved Query Examples
+
+### Save Common Work Queries
+
+```javascript
+function setupWorkQueries() {
+  // Create saved queries sheet if needed
+  const sheet = getOrCreateSheet('Saved Queries');
+
+  const queries = [
+    ['Urgent Work Emails', 'is:unread from:@company.com subject:(urgent OR important)', 'Unread urgent work emails'],
+    ['This Week Team', 'from:@company.com newer_than:7d', 'All team emails from this week'],
+    ['Boss Communications', 'from:boss@company.com OR to:boss@company.com', 'All emails with my boss'],
+    ['Project Alpha', 'subject:"Project Alpha" OR label:project-alpha', 'Project Alpha related emails'],
+    ['Unread Reports', 'subject:report is:unread', 'Unread reports waiting for review']
+  ];
+
+  // Write header if needed
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, 5).setValues([['Run?', 'Query Name', 'Gmail Query', 'Description', 'Last Run']]);
+  }
+
+  // Add queries
+  const startRow = sheet.getLastRow() + 1;
+  queries.forEach((query, index) => {
+    sheet.getRange(startRow + index, 2, 1, 3).setValues([[query[0], query[1], query[2]]]);
+  });
+
+  Logger.log(`Added ${queries.length} work queries`);
+}
+```
+
+### Save Personal/Cleanup Queries
+
+```javascript
+function setupCleanupQueries() {
+  const sheet = getOrCreateSheet('Saved Queries');
+
+  const queries = [
+    ['Old Promotions', 'category:promotions is:read older_than:30d', 'Promotional emails to delete'],
+    ['Old Social Media', 'category:social is:read older_than:60d', 'Social notifications to archive'],
+    ['Large Old Emails', 'larger:10M older_than:180d', 'Large emails to clean up'],
+    ['Newsletter Cleanup', 'subject:newsletter is:read older_than:30d', 'Old newsletters to delete'],
+    ['Unread Year Ago', 'is:unread older_than:365d', 'Really old unread emails']
+  ];
+
+  const startRow = sheet.getLastRow() + 1;
+  queries.forEach((query, index) => {
+    sheet.getRange(startRow + index, 2, 1, 3).setValues([[query[0], query[1], query[2]]]);
+  });
+
+  Logger.log(`Added ${queries.length} cleanup queries`);
+}
+```
+
+### Batch Run Multiple Queries
+
+```javascript
+function runMultipleQueries(queryNames) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName('Saved Queries');
+
+  if (!sheet) {
+    Logger.log('No saved queries found');
+    return;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const resultsSheet = getOrCreateSheet('Query Results');
+  resultsSheet.clear();
+
+  // Header
+  resultsSheet.getRange(1, 1, 1, 6).setValues([
+    ['Query Name', 'Thread ID', 'Subject', 'From', 'Date', 'Labels']
+  ]);
+
+  let resultRow = 2;
+
+  // Run each specified query
+  for (let i = 1; i < data.length; i++) {
+    const queryName = data[i][1];
+
+    if (queryNames.includes(queryName)) {
+      const query = data[i][2];
+
+      try {
+        const threads = GmailApp.search(query, 0, 100);
+
+        threads.forEach(thread => {
+          const firstMsg = thread.getMessages()[0];
+          resultsSheet.getRange(resultRow, 1, 1, 6).setValues([[
+            queryName,
+            thread.getId(),
+            thread.getFirstMessageSubject(),
+            firstMsg.getFrom(),
+            thread.getLastMessageDate(),
+            thread.getLabels().map(l => l.getName()).join(', ')
+          ]]);
+          resultRow++;
+        });
+
+        // Update last run date
+        sheet.getRange(i + 1, 5).setValue(new Date());
+
+      } catch (e) {
+        Logger.log(`Error running query "${queryName}": ${e}`);
+      }
+    }
+  }
+
+  Logger.log(`Ran ${queryNames.length} queries, found ${resultRow - 2} results`);
+}
+
+// Usage:
+runMultipleQueries(['Urgent Work Emails', 'Boss Communications', 'Project Alpha']);
+```
+
+### Auto-Run Queries Daily
+
+```javascript
+function dailyQueryCheck() {
+  // Run specific queries every day
+  const queriesToRun = [
+    'Urgent Work Emails',
+    'Unread Reports',
+    'Boss Communications'
+  ];
+
+  runMultipleQueries(queriesToRun);
+
+  // Email summary if there are results
+  const resultsSheet = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName('Query Results');
+
+  if (resultsSheet && resultsSheet.getLastRow() > 1) {
+    const count = resultsSheet.getLastRow() - 1;
+    const url = SpreadsheetApp.getActiveSpreadsheet().getUrl();
+
+    MailApp.sendEmail({
+      to: Session.getActiveUser().getEmail(),
+      subject: `Daily Email Check: ${count} items need attention`,
+      body: `Your daily query check found ${count} emails requiring attention.\n\nView results: ${url}`
+    });
+  }
+}
+
+// Set up daily trigger:
+// Extensions > Apps Script > Triggers > Add Trigger
+// Function: dailyQueryCheck
+// Event: Time-driven, Day timer, 8am to 9am
+```
+
+## Combined Workflow Examples
+
+### Workflow 5: Complete Inbox Analysis with Visuals
+
+```javascript
+function completeInboxAnalysis() {
+  // 1. Analyze patterns
+  analyzeEmailPatterns(90);
+
+  // 2. Create visual dashboard
+  createVisualDashboard(90);
+
+  // 3. Find duplicates
+  findDuplicateEmails(90);
+
+  // 4. Analyze attachments
+  analyzeAttachments(90);
+
+  // 5. Generate report
+  generateInboxReport(90);
+
+  // 6. Export to CSV
+  exportEmailsToCSV(90);
+
+  Logger.log('Complete analysis finished');
+}
+```
+
+### Workflow 6: Smart Cleanup with Saved Queries
+
+```javascript
+function smartCleanup() {
+  // 1. Run cleanup queries to identify emails
+  runMultipleQueries([
+    'Old Promotions',
+    'Old Social Media',
+    'Newsletter Cleanup'
+  ]);
+
+  // 2. Review results
+  const resultsSheet = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName('Query Results');
+
+  Logger.log(`Found ${resultsSheet.getLastRow() - 1} emails to review`);
+
+  // 3. User reviews and then runs auto-manage
+  // (Manual step - user checks results before proceeding)
+
+  Logger.log('Review Query Results sheet, then run auto-manage to cleanup');
+}
+```
+
+### Workflow 7: Weekly Team Dashboard
+
+```javascript
+function weeklyTeamDashboard() {
+  // Create dashboard for team emails
+  const query = 'from:@company.com newer_than:7d';
+  const threads = GmailApp.search(query, 0, 500);
+
+  // Create custom dashboard
+  const sheet = getOrCreateSheet('Team Dashboard - Weekly');
+  sheet.clear();
+
+  // Analysis
+  const stats = {
+    total: threads.length,
+    unread: threads.filter(t => t.isUnread()).length,
+    starred: threads.filter(t => t.hasStarredMessages()).length
+  };
+
+  // Write summary
+  sheet.getRange(1, 1, 3, 2).setValues([
+    ['Total Team Emails', stats.total],
+    ['Unread', stats.unread],
+    ['Starred', stats.starred]
+  ]);
+
+  // Create full visual dashboard too
+  createVisualDashboard(7);
+
+  Logger.log('Weekly team dashboard created');
+}
+```
+
 ## Tips for Custom Rules
 
 ### 1. Test Before Enabling

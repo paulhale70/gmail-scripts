@@ -9,6 +9,8 @@
  * - Generate custom reports on inbox statistics
  * - Find and clean up duplicate emails
  * - Manage attachments with Drive backup
+ * - Visual dashboard with charts
+ * - Saved queries and filter builder
  */
 
 // Configuration
@@ -42,8 +44,13 @@ function onOpen() {
     .addItem('💾 Backup to Drive', 'backupAttachmentsToDrive')
     .addItem('🔍 Find Duplicate Attachments', 'findDuplicateAttachments')
     .addSeparator()
-    .addItem('🗂️ Auto Archive/Delete', 'autoManageEmails')
     .addItem('📈 Generate Reports', 'generateInboxReport')
+    .addItem('📊 Visual Dashboard', 'createVisualDashboard')
+    .addSeparator()
+    .addItem('💾 Save Current Query', 'saveQuery')
+    .addItem('🔍 Manage Saved Queries', 'manageSavedQueries')
+    .addSeparator()
+    .addItem('🗂️ Auto Archive/Delete', 'autoManageEmails')
     .addToUi();
 }
 
@@ -1124,6 +1131,538 @@ function getAttachmentHash(attachment) {
   const type = attachment.getContentType();
 
   return `${name}|${size}|${type}`;
+}
+
+// ==================== VISUAL DASHBOARD ====================
+
+/**
+ * Create visual dashboard with charts
+ */
+function createVisualDashboard(daysBack = CONFIG.DAYS_TO_ANALYZE) {
+  const sheet = getOrCreateSheet('Visual Dashboard');
+  sheet.clear();
+
+  // Title
+  sheet.getRange('A1').setValue('VISUAL DASHBOARD')
+    .setFontSize(18)
+    .setFontWeight('bold')
+    .setFontColor('#1a73e8');
+
+  sheet.getRange('A2').setValue(`Generated: ${new Date()} | Last ${daysBack} days`)
+    .setFontStyle('italic')
+    .setFontColor('#5f6368');
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+  const query = `after:${formatDateForQuery(cutoffDate)}`;
+  const threads = GmailApp.search(query, 0, CONFIG.MAX_THREADS);
+
+  Logger.log(`Creating dashboard from ${threads.length} threads...`);
+
+  // Collect data for charts
+  const senderCounts = {};
+  const domainCounts = {};
+  const hourCounts = Array(24).fill(0);
+  const dayCounts = {};
+  const labelCounts = {};
+  const categoryCounts = {};
+  let totalMessages = 0;
+  let totalUnread = 0;
+  let totalWithAttachments = 0;
+  let attachmentSize = 0;
+
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  days.forEach(day => dayCounts[day] = 0);
+
+  threads.forEach(thread => {
+    const messages = thread.getMessages();
+    totalMessages += messages.length;
+    if (thread.isUnread()) totalUnread++;
+
+    // Labels
+    thread.getLabels().forEach(label => {
+      const labelName = label.getName();
+      labelCounts[labelName] = (labelCounts[labelName] || 0) + 1;
+    });
+
+    messages.forEach(message => {
+      const from = message.getFrom();
+      const email = extractEmail(from);
+      const domain = email.split('@')[1] || 'unknown';
+      const date = message.getDate();
+      const hour = date.getHours();
+      const day = days[date.getDay()];
+
+      // Count senders
+      senderCounts[email] = (senderCounts[email] || 0) + 1;
+      domainCounts[domain] = (domainCounts[domain] || 0) + 1;
+
+      // Time distribution
+      hourCounts[hour]++;
+      dayCounts[day]++;
+
+      // Attachments
+      const attachments = message.getAttachments();
+      if (attachments.length > 0) {
+        totalWithAttachments++;
+        attachments.forEach(att => {
+          attachmentSize += att.getSize();
+        });
+      }
+    });
+  });
+
+  // === CHART 1: Top 10 Senders (Pie Chart) ===
+  let row = 4;
+  sheet.getRange(row, 1).setValue('Top 10 Senders')
+    .setFontSize(14)
+    .setFontWeight('bold')
+    .setFontColor('#1a73e8');
+  row += 1;
+
+  const topSenders = Object.entries(senderCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  sheet.getRange(row, 1, 1, 2).setValues([['Sender', 'Count']])
+    .setFontWeight('bold')
+    .setBackground('#e8f0fe');
+  row++;
+
+  if (topSenders.length > 0) {
+    sheet.getRange(row, 1, topSenders.length, 2).setValues(topSenders);
+
+    // Create pie chart
+    const chartRange = sheet.getRange(row - 1, 1, topSenders.length + 1, 2);
+    const chart1 = sheet.newChart()
+      .setChartType(Charts.ChartType.PIE)
+      .addRange(chartRange)
+      .setPosition(row - 1, 4, 0, 0)
+      .setOption('title', 'Top 10 Email Senders')
+      .setOption('width', 500)
+      .setOption('height', 300)
+      .setOption('is3D', true)
+      .setOption('legend', {position: 'right'})
+      .build();
+    sheet.insertChart(chart1);
+
+    row += topSenders.length + 2;
+  }
+
+  // === CHART 2: Email Distribution by Hour (Column Chart) ===
+  sheet.getRange(row, 1).setValue('Emails by Hour of Day')
+    .setFontSize(14)
+    .setFontWeight('bold')
+    .setFontColor('#1a73e8');
+  row += 1;
+
+  sheet.getRange(row, 1, 1, 2).setValues([['Hour', 'Emails']])
+    .setFontWeight('bold')
+    .setBackground('#e8f0fe');
+  row++;
+
+  const hourData = hourCounts.map((count, hour) => [`${hour}:00`, count]);
+  sheet.getRange(row, 1, hourData.length, 2).setValues(hourData);
+
+  const chartRange2 = sheet.getRange(row - 1, 1, hourData.length + 1, 2);
+  const chart2 = sheet.newChart()
+    .setChartType(Charts.ChartType.COLUMN)
+    .addRange(chartRange2)
+    .setPosition(row - 1, 4, 0, 0)
+    .setOption('title', 'Email Distribution by Hour')
+    .setOption('width', 600)
+    .setOption('height', 300)
+    .setOption('legend', {position: 'none'})
+    .setOption('hAxis', {title: 'Hour of Day'})
+    .setOption('vAxis', {title: 'Number of Emails'})
+    .setOption('colors', ['#1a73e8'])
+    .build();
+  sheet.insertChart(chart2);
+
+  row += hourData.length + 2;
+
+  // === CHART 3: Email Distribution by Day (Bar Chart) ===
+  sheet.getRange(row, 1).setValue('Emails by Day of Week')
+    .setFontSize(14)
+    .setFontWeight('bold')
+    .setFontColor('#1a73e8');
+  row += 1;
+
+  sheet.getRange(row, 1, 1, 2).setValues([['Day', 'Emails']])
+    .setFontWeight('bold')
+    .setBackground('#e8f0fe');
+  row++;
+
+  const dayData = days.map(day => [day, dayCounts[day]]);
+  sheet.getRange(row, 1, dayData.length, 2).setValues(dayData);
+
+  const chartRange3 = sheet.getRange(row - 1, 1, dayData.length + 1, 2);
+  const chart3 = sheet.newChart()
+    .setChartType(Charts.ChartType.BAR)
+    .addRange(chartRange3)
+    .setPosition(row - 1, 4, 0, 0)
+    .setOption('title', 'Email Distribution by Day of Week')
+    .setOption('width', 500)
+    .setOption('height', 300)
+    .setOption('legend', {position: 'none'})
+    .setOption('hAxis', {title: 'Number of Emails'})
+    .setOption('colors', ['#34a853'])
+    .build();
+  sheet.insertChart(chart3);
+
+  row += dayData.length + 2;
+
+  // === CHART 4: Top Domains (Bar Chart) ===
+  sheet.getRange(row, 1).setValue('Top 10 Sender Domains')
+    .setFontSize(14)
+    .setFontWeight('bold')
+    .setFontColor('#1a73e8');
+  row += 1;
+
+  const topDomains = Object.entries(domainCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  sheet.getRange(row, 1, 1, 2).setValues([['Domain', 'Emails']])
+    .setFontWeight('bold')
+    .setBackground('#e8f0fe');
+  row++;
+
+  if (topDomains.length > 0) {
+    sheet.getRange(row, 1, topDomains.length, 2).setValues(topDomains);
+
+    const chartRange4 = sheet.getRange(row - 1, 1, topDomains.length + 1, 2);
+    const chart4 = sheet.newChart()
+      .setChartType(Charts.ChartType.BAR)
+      .addRange(chartRange4)
+      .setPosition(row - 1, 4, 0, 0)
+      .setOption('title', 'Top 10 Sender Domains')
+      .setOption('width', 500)
+      .setOption('height', 350)
+      .setOption('legend', {position: 'none'})
+      .setOption('hAxis', {title: 'Number of Emails'})
+      .setOption('colors', ['#fbbc04'])
+      .build();
+    sheet.insertChart(chart4);
+
+    row += topDomains.length + 2;
+  }
+
+  // === Summary Stats (Card-style) ===
+  const summaryRow = 4;
+  const summaryCol = 10;
+
+  sheet.getRange(summaryRow, summaryCol).setValue('SUMMARY STATISTICS')
+    .setFontSize(12)
+    .setFontWeight('bold')
+    .setBackground('#1a73e8')
+    .setFontColor('white');
+
+  const summaryData = [
+    ['Total Threads', threads.length],
+    ['Total Messages', totalMessages],
+    ['Unread', totalUnread],
+    ['Read', threads.length - totalUnread],
+    ['With Attachments', totalWithAttachments],
+    ['Attachment Size', formatBytes(attachmentSize)],
+    ['Avg Msgs/Thread', (totalMessages / threads.length).toFixed(2)],
+    ['Unique Senders', Object.keys(senderCounts).length],
+    ['Unique Domains', Object.keys(domainCounts).length]
+  ];
+
+  sheet.getRange(summaryRow + 1, summaryCol, summaryData.length, 2)
+    .setValues(summaryData)
+    .setBorder(true, true, true, true, true, true);
+
+  sheet.getRange(summaryRow + 1, summaryCol, summaryData.length, 1)
+    .setFontWeight('bold')
+    .setBackground('#f1f3f4');
+
+  sheet.autoResizeColumns(1, 2);
+  sheet.autoResizeColumns(summaryCol, 2);
+
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    'Visual dashboard created with 4 charts and summary statistics!',
+    'Dashboard Complete',
+    5
+  );
+}
+
+// ==================== SAVED QUERIES / FILTER BUILDER ====================
+
+/**
+ * Save current query for later use
+ */
+function saveQuery() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Get query details from user
+  const nameResponse = ui.prompt(
+    'Save Query',
+    'Enter a name for this query:',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (nameResponse.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  const queryName = nameResponse.getResponseText();
+  if (!queryName) {
+    ui.alert('Query name cannot be empty!');
+    return;
+  }
+
+  const queryResponse = ui.prompt(
+    'Save Query',
+    'Enter Gmail search query (e.g., "from:example.com is:unread"):',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (queryResponse.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  const query = queryResponse.getResponseText();
+  if (!query) {
+    ui.alert('Query cannot be empty!');
+    return;
+  }
+
+  const descResponse = ui.prompt(
+    'Save Query',
+    'Enter description (optional):',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  const description = descResponse.getSelectedButton() === ui.Button.OK
+    ? descResponse.getResponseText()
+    : '';
+
+  // Save to sheet
+  const sheet = getOrCreateSheet('Saved Queries');
+
+  // Initialize headers if needed
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, 5).setValues([['Select', 'Name', 'Query', 'Description', 'Created']])
+      .setFontWeight('bold')
+      .setBackground('#9c27b0')
+      .setFontColor('white');
+  }
+
+  // Add new query
+  const newRow = sheet.getLastRow() + 1;
+  sheet.getRange(newRow, 1, 1, 5).setValues([[
+    false,
+    queryName,
+    query,
+    description,
+    new Date()
+  ]]);
+
+  sheet.getRange(newRow, 1).insertCheckboxes();
+  sheet.autoResizeColumns(1, 5);
+
+  ui.alert('Query saved successfully!');
+}
+
+/**
+ * Manage saved queries - run, edit, delete
+ */
+function manageSavedQueries() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Saved Queries');
+
+  if (!sheet || sheet.getLastRow() <= 1) {
+    SpreadsheetApp.getUi().alert('No saved queries found. Use "Save Current Query" to create one!');
+    return;
+  }
+
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    'Manage Saved Queries',
+    'What would you like to do?\n\n' +
+    'YES = Run selected queries\n' +
+    'NO = Delete selected queries\n' +
+    'CANCEL = Cancel',
+    ui.ButtonSet.YES_NO_CANCEL
+  );
+
+  if (response === ui.Button.CANCEL) {
+    return;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  let actionCount = 0;
+
+  if (response === ui.Button.YES) {
+    // Run selected queries
+    const resultsSheet = getOrCreateSheet('Query Results');
+    resultsSheet.clear();
+
+    resultsSheet.getRange(1, 1).setValue('QUERY RESULTS')
+      .setFontSize(16)
+      .setFontWeight('bold');
+
+    let resultRow = 3;
+
+    for (let i = 1; i < data.length; i++) {
+      const isSelected = data[i][0];
+
+      if (isSelected === true) {
+        const queryName = data[i][1];
+        const query = data[i][2];
+
+        try {
+          const threads = GmailApp.search(query, 0, 100);
+
+          // Write results
+          resultsSheet.getRange(resultRow, 1).setValue(`Query: ${queryName}`)
+            .setFontWeight('bold')
+            .setBackground('#f1f3f4');
+          resultRow++;
+
+          resultsSheet.getRange(resultRow, 1).setValue(`Search: ${query}`)
+            .setFontStyle('italic');
+          resultRow++;
+
+          resultsSheet.getRange(resultRow, 1).setValue(`Found: ${threads.length} threads`);
+          resultRow++;
+
+          if (threads.length > 0) {
+            // Headers
+            resultsSheet.getRange(resultRow, 1, 1, 5).setValues([
+              ['Subject', 'From', 'Date', 'Labels', 'Thread ID']
+            ]).setFontWeight('bold').setBackground('#e8f0fe');
+            resultRow++;
+
+            // Thread data
+            const threadData = threads.map(thread => {
+              const messages = thread.getMessages();
+              const firstMsg = messages[0];
+              return [
+                firstMsg.getSubject(),
+                extractEmail(firstMsg.getFrom()),
+                firstMsg.getDate(),
+                thread.getLabels().map(l => l.getName()).join(', '),
+                thread.getId()
+              ];
+            });
+
+            resultsSheet.getRange(resultRow, 1, threadData.length, 5).setValues(threadData);
+            resultRow += threadData.length + 2;
+          } else {
+            resultRow += 1;
+          }
+
+          actionCount++;
+        } catch (e) {
+          Logger.log(`Error running query "${queryName}": ${e}`);
+        }
+      }
+    }
+
+    if (actionCount > 0) {
+      resultsSheet.autoResizeColumns(1, 5);
+      ui.alert(`Ran ${actionCount} queries. Check "Query Results" sheet!`);
+    } else {
+      ui.alert('No queries selected!');
+    }
+
+  } else if (response === ui.Button.NO) {
+    // Delete selected queries
+    for (let i = data.length - 1; i >= 1; i--) {
+      const isSelected = data[i][0];
+
+      if (isSelected === true) {
+        sheet.deleteRow(i + 1);
+        actionCount++;
+      }
+    }
+
+    ui.alert(`Deleted ${actionCount} queries.`);
+  }
+}
+
+/**
+ * Create query template library
+ */
+function createQueryTemplates() {
+  const sheet = getOrCreateSheet('Query Templates');
+  sheet.clear();
+
+  sheet.getRange(1, 1).setValue('GMAIL QUERY TEMPLATES')
+    .setFontSize(16)
+    .setFontWeight('bold');
+
+  sheet.getRange(2, 1).setValue('Click "Copy" to use a template, then customize it')
+    .setFontStyle('italic');
+
+  const headers = [['Category', 'Template Name', 'Query', 'Description', 'Copy']];
+  sheet.getRange(4, 1, 1, headers[0].length).setValues(headers)
+    .setFontWeight('bold')
+    .setBackground('#9c27b0')
+    .setFontColor('white');
+
+  const templates = [
+    // Unread emails
+    ['Unread', 'All Unread', 'is:unread', 'All unread emails'],
+    ['Unread', 'Unread from Person', 'is:unread from:EMAIL', 'Replace EMAIL with sender'],
+    ['Unread', 'Old Unread', 'is:unread older_than:30d', 'Unread emails older than 30 days'],
+
+    // By sender
+    ['Sender', 'From Specific Person', 'from:example@email.com', 'Replace with actual email'],
+    ['Sender', 'From Domain', 'from:@domain.com', 'All emails from a domain'],
+    ['Sender', 'NOT from Person', '-from:example@email.com', 'Exclude specific sender'],
+
+    // By date
+    ['Date', 'After Date', 'after:2024/01/01', 'Emails after specific date'],
+    ['Date', 'Before Date', 'before:2024/12/31', 'Emails before specific date'],
+    ['Date', 'Date Range', 'after:2024/01/01 before:2024/12/31', 'Between two dates'],
+    ['Date', 'Last 7 Days', 'newer_than:7d', 'Emails from last week'],
+    ['Date', 'Older than 30 Days', 'older_than:30d', 'Emails older than 30 days'],
+
+    // Attachments
+    ['Attachments', 'Has Any Attachment', 'has:attachment', 'Emails with attachments'],
+    ['Attachments', 'Large Files', 'has:attachment larger:10M', 'Attachments over 10MB'],
+    ['Attachments', 'Specific File Type', 'filename:pdf', 'PDFs only'],
+    ['Attachments', 'Multiple Types', 'filename:pdf OR filename:docx', 'PDFs or Word docs'],
+
+    // Categories
+    ['Category', 'Promotions', 'category:promotions', 'Promotional emails'],
+    ['Category', 'Social', 'category:social', 'Social media emails'],
+    ['Category', 'Updates', 'category:updates', 'Update emails'],
+    ['Category', 'Forums', 'category:forums', 'Forum emails'],
+
+    // Status
+    ['Status', 'Starred', 'is:starred', 'Starred emails'],
+    ['Status', 'Important', 'is:important', 'Important emails'],
+    ['Status', 'Read', 'is:read', 'Read emails'],
+
+    // Content
+    ['Content', 'Subject Contains', 'subject:"keyword"', 'Subject contains keyword'],
+    ['Content', 'Body Contains', 'keyword', 'Body contains keyword'],
+    ['Content', 'Exact Phrase', '"exact phrase"', 'Exact phrase match'],
+
+    // Combined
+    ['Combined', 'Old Read Promotions', 'category:promotions is:read older_than:30d', 'Old promotional emails'],
+    ['Combined', 'Large Unread Attachments', 'is:unread has:attachment larger:5M', 'Unread emails with large files'],
+    ['Combined', 'Work Emails This Week', 'from:@company.com newer_than:7d', 'Recent work emails'],
+  ];
+
+  sheet.getRange(5, 1, templates.length, 4).setValues(templates);
+
+  // Add copy buttons (checkboxes for simplicity)
+  sheet.getRange(5, 5, templates.length, 1).insertCheckboxes();
+
+  sheet.autoResizeColumns(1, 5);
+  sheet.setFrozenRows(4);
+
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    'Query templates created! Select a template and copy the query.',
+    'Templates Ready',
+    5
+  );
 }
 
 // ==================== CUSTOM REPORTS ====================

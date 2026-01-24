@@ -208,12 +208,17 @@ At the top of your sheet, you should now see a new menu called **"Gmail Analyzer
 | Find newsletters to unsubscribe | **Gmail Analyzer** > 🔍 Find Unsubscribe Links |
 | Find duplicate emails | **Gmail Analyzer** > 🔄 Find Duplicate Emails |
 | Get inbox statistics | **Gmail Analyzer** > 📈 Generate Reports |
+| See visual charts and graphs | **Gmail Analyzer** > 📊 Visual Dashboard |
+| Save frequent searches | **Gmail Analyzer** > 💾 Save Current Query |
+| Manage attachments | **Gmail Analyzer** > 📎 Analyze Attachments |
 
 ### Learn More
 
 - **Quick Start Guide:** Read `QUICKSTART.md` for common tasks
 - **Full Manual:** Read `README.md` for complete documentation
+- **Visual Dashboard & Queries:** Read `VISUAL_DASHBOARD.md` for charts and saved searches
 - **Duplicate Cleanup:** Read `DUPLICATE_DETECTION.md` for duplicate email guide
+- **Attachment Management:** Read `ATTACHMENT_MANAGER.md` for attachment features
 - **Advanced Examples:** Read `EXAMPLES.md` for custom scripts
 
 ---

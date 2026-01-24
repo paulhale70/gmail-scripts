@@ -12,6 +12,7 @@ A comprehensive Google Apps Script for analyzing, managing, and automating your 
 - **[📖 Full Manual](README.md)** - You are here! Complete documentation
 - **[🔄 Duplicate Detection](DUPLICATE_DETECTION.md)** - Detailed guide for finding and cleaning duplicates
 - **[📎 Attachment Manager](ATTACHMENT_MANAGER.md)** - Manage and backup attachments to Google Drive
+- **[📊 Visual Dashboard](VISUAL_DASHBOARD.md)** - Interactive charts and saved query system
 - **[💡 Examples](EXAMPLES.md)** - Advanced examples and custom scripts
 
 **Choose your path:**
@@ -64,6 +65,22 @@ A comprehensive Google Apps Script for analyzing, managing, and automating your 
 - Auto-organize by sender in Drive folders
 - Track storage usage by attachments
 - Free up space by removing duplicates
+
+### 📊 Visual Dashboard
+- Interactive charts and graphs
+- Email patterns visualization (pie, bar, column charts)
+- Hourly and daily distribution charts
+- Top senders and domains visualization
+- Summary statistics card
+- Export charts for presentations
+
+### 🔍 Saved Queries / Filter Builder
+- Save frequently used Gmail searches
+- Query template library (30+ pre-built queries)
+- One-click access to complex searches
+- Batch query execution
+- Organize and manage search filters
+- No-code filter building
 
 ### 📈 Custom Reports
 - Comprehensive inbox statistics
@@ -329,6 +346,76 @@ Finds attachments that appear multiple times across different emails:
 **Use Case:** Free up storage by removing duplicate files, understand which senders send the same files repeatedly.
 
 **See Also:** Check `ATTACHMENT_MANAGER.md` for detailed guide, advanced features, and automation examples.
+
+### 📊 Visual Dashboard
+
+**Menu:** Gmail Analyzer > 📊 Visual Dashboard
+
+Creates an interactive visual analytics dashboard with charts and graphs:
+- **Top 10 Senders Pie Chart** - Visual breakdown of email sources
+- **Email Distribution by Hour** - Column chart showing hourly patterns
+- **Email Distribution by Day** - Bar chart showing weekly patterns
+- **Top 10 Sender Domains** - Bar chart of most common domains
+- **Summary Statistics** - Key metrics card
+
+**Output:** Creates/updates "Visual Dashboard" sheet with:
+- 4 interactive charts using Google Charts
+- Hover-over details on all charts
+- Summary statistics sidebar
+- Professional presentation-ready visualizations
+
+**Features:**
+- Analyzes last 90 days (configurable)
+- Color-coded charts
+- Export-ready format
+- Great for reports and presentations
+
+**Use Case:** Quickly understand email patterns visually, identify trends, create presentation materials, share insights with team.
+
+### 💾 Save Current Query
+
+**Menu:** Gmail Analyzer > 💾 Save Current Query
+
+Save frequently used Gmail searches for quick access:
+
+**Steps:**
+1. Click menu option
+2. Enter query name (e.g., "Unread Work Emails")
+3. Enter Gmail search query (e.g., `is:unread from:@company.com`)
+4. Add optional description
+5. Query is saved to "Saved Queries" sheet
+
+**Use Case:** Save time by storing complex searches, avoid retyping common queries, build a personal search library.
+
+### 🔍 Manage Saved Queries
+
+**Menu:** Gmail Analyzer > 🔍 Manage Saved Queries
+
+Run or delete saved queries:
+
+**To Run Queries:**
+1. Open "Saved Queries" sheet
+2. Check boxes next to queries to execute
+3. Run this function
+4. Click YES
+5. Results appear in "Query Results" sheet
+
+**To Delete Queries:**
+1. Open "Saved Queries" sheet
+2. Check boxes next to queries to remove
+3. Run this function
+4. Click NO
+5. Selected queries are deleted
+
+**Features:**
+- Batch execution of multiple queries
+- Organized results by query
+- Shows up to 100 results per query
+- Displays subject, sender, date, labels
+
+**Use Case:** Weekly email reviews, project tracking, client management, regular audits.
+
+**See Also:** Check `VISUAL_DASHBOARD.md` for chart customization, query templates library, and advanced examples.
 
 ## Configuration
 
