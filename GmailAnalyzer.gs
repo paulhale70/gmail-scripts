@@ -1985,6 +1985,8 @@ function formatDateForQuery(date) {
 function testDateRange() {
   const ui = SpreadsheetApp.getUi();
 
+  SpreadsheetApp.getActive().toast('Running diagnostics...', 'Please wait', 5);
+
   // Get current configuration
   const daysBack = CONFIG.DAYS_TO_ANALYZE;
   const today = new Date();
@@ -1995,21 +1997,43 @@ function testDateRange() {
   const queryDate = formatDateForQuery(cutoffDate);
   const query = `after:${queryDate}`;
 
-  // Test the query
-  const threads = GmailApp.search(query, 0, 10);
+  // Test the query with different limits
+  const sample10 = GmailApp.search(query, 0, 10);
+  const sample100 = GmailApp.search(query, 0, 100);
+  const fullLimit = GmailApp.search(query, 0, CONFIG.MAX_THREADS);
 
   // Build diagnostic message
   const message =
     `CONFIGURATION CHECK:\n\n` +
-    `DAYS_TO_ANALYZE: ${daysBack} days\n\n` +
+    `DAYS_TO_ANALYZE: ${daysBack} days\n` +
+    `MAX_THREADS: ${CONFIG.MAX_THREADS}\n\n` +
     `TODAY'S DATE:\n${today.toLocaleDateString()} ${today.toLocaleTimeString()}\n\n` +
     `CUTOFF DATE (${daysBack} days ago):\n${cutoffDate.toLocaleDateString()} ${cutoffDate.toLocaleTimeString()}\n\n` +
-    `GMAIL QUERY:\n${query}\n\n` +
-    `SAMPLE RESULTS: Found ${threads.length} threads (showing first 10)\n\n` +
+    `GMAIL QUERY: ${query}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+    `RESULTS FOUND:\n` +
+    `• First 10: ${sample10.length} threads\n` +
+    `• First 100: ${sample100.length} threads\n` +
+    `• First ${CONFIG.MAX_THREADS}: ${fullLimit.length} threads\n\n` +
+    `TOTAL AVAILABLE: ${fullLimit.length} threads will be analyzed\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+    (fullLimit.length < 50 ?
+      `⚠️ LOW THREAD COUNT!\n` +
+      `Only ${fullLimit.length} threads found in ${daysBack} days.\n\n` +
+      `Possible reasons:\n` +
+      `1. Light inbox usage (normal for some users)\n` +
+      `2. Wrong Gmail account connected\n` +
+      `3. Emails archived/deleted\n` +
+      `4. Check Gmail web to verify email count\n\n` :
+      `✅ HEALTHY THREAD COUNT\n` +
+      `Found ${fullLimit.length} threads - analysis will work well!\n\n`
+    ) +
+    `A detailed report has been created in the\n"Thread Count Report" sheet.\n\n` +
     `If this doesn't look right:\n` +
-    `1. Check CONFIG.DAYS_TO_ANALYZE at top of script\n` +
-    `2. Make sure you saved the script after editing\n` +
-    `3. Try refreshing your browser`;
+    `1. Verify you're using the correct Gmail account\n` +
+    `2. Check your Gmail web interface\n` +
+    `3. Increase MAX_THREADS if needed\n` +
+    `4. Try a different time period`;
 
   // Show dialog
   ui.alert('Date Range Diagnostic', message, ui.ButtonSet.OK);
@@ -2017,15 +2041,99 @@ function testDateRange() {
   // Also log to console
   Logger.log('=== DATE RANGE DIAGNOSTIC ===');
   Logger.log(`DAYS_TO_ANALYZE: ${daysBack}`);
+  Logger.log(`MAX_THREADS: ${CONFIG.MAX_THREADS}`);
   Logger.log(`Today: ${today}`);
   Logger.log(`Cutoff: ${cutoffDate}`);
   Logger.log(`Query: ${query}`);
-  Logger.log(`Threads found: ${threads.length}`);
+  Logger.log(`Sample 10: ${sample10.length} threads`);
+  Logger.log(`Sample 100: ${sample100.length} threads`);
+  Logger.log(`Full limit (${CONFIG.MAX_THREADS}): ${fullLimit.length} threads`);
 
-  // Log first few thread dates
-  threads.slice(0, 5).forEach(thread => {
-    Logger.log(`Thread date: ${thread.getLastMessageDate()}`);
+  // Log first few thread dates for verification
+  Logger.log('\n=== SAMPLE THREAD DATES ===');
+  fullLimit.slice(0, 10).forEach((thread, index) => {
+    Logger.log(`Thread ${index + 1}: ${thread.getLastMessageDate()} - ${thread.getFirstMessageSubject()}`);
   });
+
+  // Create a detailed report sheet
+  createThreadCountReport(query, fullLimit, daysBack);
+}
+
+/**
+ * Create detailed thread count report in a new sheet
+ */
+function createThreadCountReport(query, threads, daysBack) {
+  const sheet = getOrCreateSheet('Thread Count Report');
+  sheet.clear();
+
+  // Header
+  sheet.getRange('A1').setValue('THREAD COUNT DIAGNOSTIC REPORT')
+    .setFontSize(14)
+    .setFontWeight('bold');
+
+  sheet.getRange('A2').setValue(`Generated: ${new Date()}`)
+    .setFontStyle('italic');
+
+  // Configuration
+  let row = 4;
+  sheet.getRange(row, 1, 1, 2).setValues([['Configuration', 'Value']])
+    .setFontWeight('bold')
+    .setBackground('#4285f4')
+    .setFontColor('white');
+
+  row++;
+  const configData = [
+    ['DAYS_TO_ANALYZE', CONFIG.DAYS_TO_ANALYZE],
+    ['MAX_THREADS', CONFIG.MAX_THREADS],
+    ['Gmail Query', query],
+    ['Threads Found', threads.length],
+    ['', ''],
+    ['Status', threads.length < 50 ? '⚠️ LOW COUNT' : '✅ HEALTHY COUNT']
+  ];
+  sheet.getRange(row, 1, configData.length, 2).setValues(configData);
+
+  // Color code status
+  if (threads.length < 50) {
+    sheet.getRange(row + 5, 2).setBackground('#fce8e6');
+  } else {
+    sheet.getRange(row + 5, 2).setBackground('#d9ead3');
+  }
+
+  row += configData.length + 2;
+
+  // Thread samples
+  sheet.getRange(row, 1, 1, 4).setValues([['#', 'Date', 'Subject', 'From']])
+    .setFontWeight('bold')
+    .setBackground('#34a853')
+    .setFontColor('white');
+
+  row++;
+
+  const sampleSize = Math.min(20, threads.length);
+  if (sampleSize > 0) {
+    for (let i = 0; i < sampleSize; i++) {
+      const thread = threads[i];
+      const firstMsg = thread.getMessages()[0];
+      sheet.getRange(row + i, 1, 1, 4).setValues([[
+        i + 1,
+        thread.getLastMessageDate(),
+        thread.getFirstMessageSubject().substring(0, 50),
+        firstMsg.getFrom().substring(0, 40)
+      ]]);
+    }
+  } else {
+    sheet.getRange(row, 1).setValue('No threads found!')
+      .setFontColor('#cc0000')
+      .setFontWeight('bold');
+  }
+
+  sheet.autoResizeColumns(1, 4);
+
+  SpreadsheetApp.getActive().toast(
+    `Found ${threads.length} threads. Check "Thread Count Report" sheet for details.`,
+    'Diagnostic Complete',
+    8
+  );
 }
 
 /**
