@@ -53,6 +53,8 @@ function onOpen() {
     .addItem('🔍 Manage Saved Queries', 'manageSavedQueries')
     .addSeparator()
     .addItem('🗂️ Auto Archive/Delete', 'autoManageEmails')
+    .addSeparator()
+    .addItem('🔧 Test Date Range', 'testDateRange')
     .addToUi();
 }
 
@@ -1974,6 +1976,56 @@ function formatDateForQuery(date) {
   const month = date.getMonth() + 1;
   const day = date.getDate();
   return `${year}/${month}/${day}`;
+}
+
+/**
+ * Test function to diagnose date range issues
+ * Shows configuration values and calculated dates
+ */
+function testDateRange() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Get current configuration
+  const daysBack = CONFIG.DAYS_TO_ANALYZE;
+  const today = new Date();
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+  // Format for Gmail query
+  const queryDate = formatDateForQuery(cutoffDate);
+  const query = `after:${queryDate}`;
+
+  // Test the query
+  const threads = GmailApp.search(query, 0, 10);
+
+  // Build diagnostic message
+  const message =
+    `CONFIGURATION CHECK:\n\n` +
+    `DAYS_TO_ANALYZE: ${daysBack} days\n\n` +
+    `TODAY'S DATE:\n${today.toLocaleDateString()} ${today.toLocaleTimeString()}\n\n` +
+    `CUTOFF DATE (${daysBack} days ago):\n${cutoffDate.toLocaleDateString()} ${cutoffDate.toLocaleTimeString()}\n\n` +
+    `GMAIL QUERY:\n${query}\n\n` +
+    `SAMPLE RESULTS: Found ${threads.length} threads (showing first 10)\n\n` +
+    `If this doesn't look right:\n` +
+    `1. Check CONFIG.DAYS_TO_ANALYZE at top of script\n` +
+    `2. Make sure you saved the script after editing\n` +
+    `3. Try refreshing your browser`;
+
+  // Show dialog
+  ui.alert('Date Range Diagnostic', message, ui.ButtonSet.OK);
+
+  // Also log to console
+  Logger.log('=== DATE RANGE DIAGNOSTIC ===');
+  Logger.log(`DAYS_TO_ANALYZE: ${daysBack}`);
+  Logger.log(`Today: ${today}`);
+  Logger.log(`Cutoff: ${cutoffDate}`);
+  Logger.log(`Query: ${query}`);
+  Logger.log(`Threads found: ${threads.length}`);
+
+  // Log first few thread dates
+  threads.slice(0, 5).forEach(thread => {
+    Logger.log(`Thread date: ${thread.getLastMessageDate()}`);
+  });
 }
 
 /**
