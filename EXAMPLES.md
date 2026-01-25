@@ -678,12 +678,102 @@ function dailyQueryCheck() {
 // Event: Time-driven, Day timer, 8am to 9am
 ```
 
+## Refresh Examples
+
+### Refresh All Data (Built-in)
+
+```javascript
+// Refresh with default 90 days
+refreshAllAnalyses();
+
+// Refresh with custom time period
+refreshAllAnalyses(30);  // Last 30 days
+refreshAllAnalyses(180); // Last 6 months
+
+// Use the custom prompt version
+refreshAllAnalysesCustom(); // Prompts user for days
+```
+
+### Schedule Weekly Refresh
+
+```javascript
+// Set up a weekly trigger:
+// 1. Extensions > Apps Script > Triggers (clock icon)
+// 2. Add Trigger
+// 3. Function: refreshAllAnalyses
+// 4. Event: Time-driven > Week timer > Every Monday > 8am to 9am
+
+// Or create custom scheduled refresh:
+function weeklyRefresh() {
+  // Refresh last 7 days of data
+  refreshAllAnalyses(7);
+
+  // Send notification email
+  MailApp.sendEmail({
+    to: Session.getActiveUser().getEmail(),
+    subject: '✅ Weekly Gmail Analysis Complete',
+    body: 'Your Gmail analysis has been refreshed with the latest data.\n\nView it here: ' +
+          SpreadsheetApp.getActiveSpreadsheet().getUrl()
+  });
+}
+```
+
+### Monthly Comprehensive Refresh
+
+```javascript
+function monthlyFullRefresh() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Refresh all analyses for full 90 days
+  refreshAllAnalyses(90);
+
+  // Create a backup export
+  exportEmailsToCSV(90);
+
+  // Rename export sheet with date
+  const exportSheet = ss.getSheetByName('Email Export');
+  const today = new Date();
+  const monthName = Utilities.formatDate(today, Session.getScriptTimeZone(), 'MMMM yyyy');
+  exportSheet.setName(`Export - ${monthName}`);
+
+  Logger.log(`Monthly refresh complete for ${monthName}`);
+}
+
+// Schedule this for the 1st of each month:
+// Trigger: Time-driven > Month timer > 1st day > 9am to 10am
+```
+
+### Selective Refresh (Custom)
+
+```javascript
+function refreshDashboardOnly() {
+  // Just refresh the visual elements
+  createVisualDashboard(CONFIG.DAYS_TO_ANALYZE);
+  generateInboxReport(CONFIG.DAYS_TO_ANALYZE);
+
+  SpreadsheetApp.getActive().toast('Dashboard refreshed', 'Complete', 3);
+}
+
+function refreshDataOnly() {
+  // Just refresh the data analyses
+  analyzeEmailPatterns(CONFIG.DAYS_TO_ANALYZE);
+  findDuplicateEmails(CONFIG.DAYS_TO_ANALYZE);
+  analyzeAttachments(CONFIG.DAYS_TO_ANALYZE);
+
+  SpreadsheetApp.getActive().toast('Data refreshed', 'Complete', 3);
+}
+```
+
 ## Combined Workflow Examples
 
 ### Workflow 5: Complete Inbox Analysis with Visuals
 
 ```javascript
 function completeInboxAnalysis() {
+  // Just use the built-in refresh function!
+  refreshAllAnalyses(90);
+
+  // Or do it manually:
   // 1. Analyze patterns
   analyzeEmailPatterns(90);
 

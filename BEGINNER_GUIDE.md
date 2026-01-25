@@ -203,6 +203,7 @@ At the top of your sheet, you should now see a new menu called **"Gmail Analyzer
 
 | What You Want | What to Click |
 |---------------|---------------|
+| Update all data with latest emails | **Gmail Analyzer** > 🔄 Refresh All Data |
 | See who emails me the most | **Gmail Analyzer** > 📊 Analyze Email Patterns |
 | Export emails to Excel | **Gmail Analyzer** > 📧 Export to CSV |
 | Find newsletters to unsubscribe | **Gmail Analyzer** > 🔍 Find Unsubscribe Links |

@@ -32,6 +32,8 @@ const CONFIG = {
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('Gmail Analyzer')
+    .addItem('🔄 Refresh All Data', 'refreshAllAnalyses')
+    .addSeparator()
     .addItem('📊 Analyze Email Patterns', 'analyzeEmailPatterns')
     .addItem('📧 Export to CSV', 'exportEmailsToCSV')
     .addItem('🔍 Find Unsubscribe Links', 'findUnsubscribeEmails')
@@ -52,6 +54,138 @@ function onOpen() {
     .addSeparator()
     .addItem('🗂️ Auto Archive/Delete', 'autoManageEmails')
     .addToUi();
+}
+
+/**
+ * Refresh all analysis sheets with latest Gmail data
+ * Re-runs all major analyses to update all sheets with current information
+ */
+function refreshAllAnalyses(daysBack = CONFIG.DAYS_TO_ANALYZE) {
+  const ui = SpreadsheetApp.getUi();
+
+  // Confirm with user
+  const response = ui.alert(
+    'Refresh All Data',
+    `This will update all analysis sheets with data from the last ${daysBack} days.\n\n` +
+    'The following will be refreshed:\n' +
+    '• Email Pattern Analysis\n' +
+    '• Visual Dashboard\n' +
+    '• Duplicate Emails\n' +
+    '• Attachments Analysis\n' +
+    '• Inbox Report\n' +
+    '• Unsubscribe Links\n\n' +
+    'This may take 2-5 minutes. Continue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    SpreadsheetApp.getActive().toast('Refresh cancelled', 'Cancelled', 3);
+    return;
+  }
+
+  const startTime = new Date();
+  let completedCount = 0;
+  const totalTasks = 6;
+
+  try {
+    // 1. Analyze Email Patterns
+    SpreadsheetApp.getActive().toast('Analyzing email patterns...', 'Refreshing (1/6)', -1);
+    analyzeEmailPatterns(daysBack);
+    completedCount++;
+
+    // 2. Create Visual Dashboard
+    SpreadsheetApp.getActive().toast('Creating visual dashboard...', 'Refreshing (2/6)', -1);
+    createVisualDashboard(daysBack);
+    completedCount++;
+
+    // 3. Find Duplicate Emails
+    SpreadsheetApp.getActive().toast('Finding duplicate emails...', 'Refreshing (3/6)', -1);
+    findDuplicateEmails(daysBack);
+    completedCount++;
+
+    // 4. Analyze Attachments
+    SpreadsheetApp.getActive().toast('Analyzing attachments...', 'Refreshing (4/6)', -1);
+    analyzeAttachments(daysBack);
+    completedCount++;
+
+    // 5. Generate Inbox Report
+    SpreadsheetApp.getActive().toast('Generating inbox report...', 'Refreshing (5/6)', -1);
+    generateInboxReport(daysBack);
+    completedCount++;
+
+    // 6. Find Unsubscribe Links
+    SpreadsheetApp.getActive().toast('Finding unsubscribe links...', 'Refreshing (6/6)', -1);
+    findUnsubscribeEmails(daysBack);
+    completedCount++;
+
+    // Calculate duration
+    const endTime = new Date();
+    const durationSeconds = Math.round((endTime - startTime) / 1000);
+    const durationText = durationSeconds >= 60
+      ? `${Math.floor(durationSeconds / 60)}m ${durationSeconds % 60}s`
+      : `${durationSeconds}s`;
+
+    // Success message
+    ui.alert(
+      'Refresh Complete! ✅',
+      `All ${completedCount} analyses have been updated with the latest data.\n\n` +
+      `Time period: Last ${daysBack} days\n` +
+      `Duration: ${durationText}\n\n` +
+      'All sheets now contain the most current information from your Gmail account.',
+      ui.ButtonSet.OK
+    );
+
+    SpreadsheetApp.getActive().toast(
+      `${completedCount} sheets refreshed in ${durationText}`,
+      'Complete ✅',
+      5
+    );
+
+  } catch (error) {
+    // Error handling
+    ui.alert(
+      'Refresh Error',
+      `An error occurred during refresh after completing ${completedCount}/${totalTasks} tasks:\n\n` +
+      error.toString() + '\n\n' +
+      'Some sheets may have been updated. Please check individual sheets.',
+      ui.ButtonSet.OK
+    );
+
+    Logger.log(`Refresh error: ${error}`);
+    SpreadsheetApp.getActive().toast('Refresh failed - see error dialog', 'Error', 5);
+  }
+}
+
+/**
+ * Refresh all analyses with custom time period
+ * Prompts user for number of days to analyze
+ */
+function refreshAllAnalysesCustom() {
+  const ui = SpreadsheetApp.getUi();
+
+  const response = ui.prompt(
+    'Custom Refresh Period',
+    'How many days back should we analyze?\n\n' +
+    '(Default: 90 days, Max recommended: 365 days)',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  const daysBack = parseInt(response.getResponseText());
+
+  if (isNaN(daysBack) || daysBack < 1 || daysBack > 365) {
+    ui.alert(
+      'Invalid Input',
+      'Please enter a number between 1 and 365.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  refreshAllAnalyses(daysBack);
 }
 
 // ==================== EMAIL PATTERN ANALYSIS ====================

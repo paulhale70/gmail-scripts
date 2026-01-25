@@ -25,6 +25,14 @@ A comprehensive Google Apps Script for analyzing, managing, and automating your 
 
 ## Features
 
+### 🔄 Refresh All Data
+- One-click refresh of all analysis sheets
+- Updates all data with latest Gmail information
+- Refreshes: Pattern Analysis, Dashboard, Duplicates, Attachments, Reports, and Unsubscribe Links
+- Progress tracking with status notifications
+- Customizable time period (default: 90 days)
+- Batch processing for efficiency
+
 ### 📊 Email Pattern Analysis
 - Analyze email senders and their frequency
 - Identify most active senders
@@ -123,6 +131,35 @@ The script now has permission to access your Gmail account.
 2. You should now see a new menu: **Gmail Analyzer**
 
 ## Usage
+
+### 🔄 Refresh All Data
+
+**Menu:** Gmail Analyzer > 🔄 Refresh All Data
+
+Updates all analysis sheets with the latest Gmail data in one click. This is useful when:
+- You've received new emails since your last analysis
+- You want all sheets to reflect current data
+- You're preparing a fresh report
+
+**What gets refreshed:**
+1. Email Pattern Analysis
+2. Visual Dashboard (all charts)
+3. Duplicate Emails
+4. Attachments Analysis
+5. Inbox Report
+6. Unsubscribe Links
+
+**Process:**
+1. Click the menu item
+2. Confirm the time period (default: last 90 days)
+3. Wait 2-5 minutes for completion
+4. All sheets now contain current data
+
+**Output:** Updates 6 existing sheets with latest information
+
+**Use Case:** Run this weekly or monthly to keep all your analyses up-to-date without clicking each feature individually.
+
+**Tip:** For a custom time period, run `refreshAllAnalysesCustom()` from the Apps Script editor to analyze a different number of days.
 
 ### 📊 Analyze Email Patterns
 

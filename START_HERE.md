@@ -239,60 +239,67 @@ Step 4: Customize!
 
 ## 📊 What's Included
 
-### 9 Main Features
+### 10 Main Features
 
-1. **📊 Email Pattern Analysis**
+1. **🔄 Refresh All Data** (NEW!)
+   - One-click data refresh
+   - Updates all analysis sheets
+   - Saves time
+   - Keep data current
+   - Customizable time period
+
+2. **📊 Email Pattern Analysis**
    - Who emails you most
    - When you get emails
    - Activity patterns
 
-2. **🔍 Bulk Unsubscribe**
+3. **🔍 Bulk Unsubscribe**
    - Find all subscriptions
    - Unsubscribe in bulk
    - Clean up newsletters
 
-3. **📧 CSV Export**
+4. **📧 CSV Export**
    - Export all email data
    - Open in Excel/Python
    - Deep analysis
 
-4. **🔄 Duplicate Detection**
+5. **🔄 Duplicate Detection**
    - Find exact duplicates
    - Find near duplicates
    - Forwarded chains
    - CC'd/BCC'd duplicates
 
-5. **📎 Attachment Manager**
+6. **📎 Attachment Manager**
    - Analyze all attachments
    - Backup to Google Drive
    - Find duplicate files
    - Free up storage
    - Auto-organize by sender
 
-6. **📊 Visual Dashboard** (NEW!)
+7. **📊 Visual Dashboard**
    - Interactive charts
    - Email pattern visualization
    - Hourly/daily distributions
    - Summary statistics
    - Export-ready graphs
 
-7. **🔍 Saved Queries** (NEW!)
+8. **🔍 Saved Queries**
    - Save frequent searches
    - Query templates
    - Batch execution
    - One-click access
    - No-code building
 
-8. **🗂️ Auto-Manage**
+9. **🗂️ Auto-Manage**
    - Custom cleanup rules
    - Scheduled automation
    - Smart filtering
 
-9. **📈 Reports**
-   - Inbox statistics
-   - Domain analysis
-   - Time patterns
-   - Label usage
+10. **📈 Reports**
+    - Inbox statistics
+    - Domain analysis
+    - Time patterns
+    - Label usage
 
 ---
 

@@ -80,6 +80,13 @@ Get started with Gmail Analyzer in 5 minutes!
 4. Add description (optional)
 5. Query saved for future use!
 
+### Task 9: Refresh All Data
+1. Run some analyses first (Tasks 1-7)
+2. Wait a few days for new emails
+3. Click **Gmail Analyzer** → **🔄 Refresh All Data**
+4. Confirm the refresh
+5. All 6 sheets updated with latest data!
+
 ## Common Scenarios
 
 ### Scenario 1: "I want to unsubscribe from 50+ newsletters"
@@ -153,6 +160,21 @@ Get started with Gmail Analyzer in 5 minutes!
 9. Make sure rules are enabled in "Auto-Manage Rules" sheet!
 ```
 
+### Scenario 7: "Weekly automatic refresh"
+
+```
+1. Extensions → Apps Script
+2. Click Triggers (clock icon on left)
+3. Click "+ Add Trigger"
+4. Function: refreshAllAnalyses
+5. Event source: Time-driven
+6. Type: Week timer
+7. Day: Every Monday
+8. Time: 8am to 9am
+9. Click Save
+10. Every Monday your data auto-refreshes!
+```
+
 ## Pro Tips
 
 ### Faster Analysis
@@ -187,8 +209,8 @@ subject:newsletter OR subject:digest
 
 Good functions to schedule:
 - **Daily:** `autoManageEmails()` - Keep inbox clean
-- **Weekly:** `analyzeEmailPatterns()` - Track trends
-- **Monthly:** `generateInboxReport()` - Review stats
+- **Weekly:** `refreshAllAnalyses()` - Update all data sheets automatically
+- **Monthly:** `generateInboxReport()` - Review detailed stats
 
 ## Troubleshooting
 
