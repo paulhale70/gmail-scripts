@@ -276,8 +276,8 @@ At the top of your sheet, you should now see a new menu called **"Gmail Analyzer
 1. This means you have a lot of emails!
 2. Try analyzing fewer days:
    - Go to **Extensions** > **Apps Script**
-   - Find the line: `DAYS_TO_ANALYZE: 90`
-   - Change `90` to `30`
+   - Find the line: `DAYS_TO_ANALYZE: 180`
+   - Change `180` to `30` or `60`
    - Save and try again
 3. Or reduce `MAX_THREADS` from `500` to `200`
 

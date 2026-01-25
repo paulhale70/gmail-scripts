@@ -80,7 +80,7 @@ Thread 3: Same email where you were BCC'd
 3. Review "Duplicate Emails" sheet
 
 **What happens:**
-- Analyzes last 90 days (default)
+- Analyzes last 180 days (default)
 - Creates groups of duplicate emails
 - Marks oldest email in each group as "keep" (unchecked)
 - Newer duplicates are checked for deletion by default

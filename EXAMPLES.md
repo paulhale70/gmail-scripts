@@ -683,12 +683,13 @@ function dailyQueryCheck() {
 ### Refresh All Data (Built-in)
 
 ```javascript
-// Refresh with default 90 days
+// Refresh with default 180 days
 refreshAllAnalyses();
 
 // Refresh with custom time period
 refreshAllAnalyses(30);  // Last 30 days
-refreshAllAnalyses(180); // Last 6 months
+refreshAllAnalyses(90);  // Last 3 months
+refreshAllAnalyses(180); // Last 6 months (default)
 
 // Use the custom prompt version
 refreshAllAnalysesCustom(); // Prompts user for days
@@ -724,11 +725,11 @@ function weeklyRefresh() {
 function monthlyFullRefresh() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // Refresh all analyses for full 90 days
-  refreshAllAnalyses(90);
+  // Refresh all analyses for full 180 days (6 months)
+  refreshAllAnalyses(180);
 
   // Create a backup export
-  exportEmailsToCSV(90);
+  exportEmailsToCSV(180);
 
   // Rename export sheet with date
   const exportSheet = ss.getSheetByName('Email Export');
@@ -889,7 +890,7 @@ function weeklyTeamDashboard() {
 // Reduce scope
 const CONFIG = {
   MAX_THREADS: 200,      // Lower from 500
-  DAYS_TO_ANALYZE: 30,   // Lower from 90
+  DAYS_TO_ANALYZE: 30,   // Lower from 180
   BATCH_SIZE: 50,        // Lower from 100
 };
 
@@ -897,6 +898,7 @@ const CONFIG = {
 analyzeEmailPatterns(30);  // Last month
 analyzeEmailPatterns(60);  // Month before
 analyzeEmailPatterns(90);  // Three months ago
+analyzeEmailPatterns(180); // Six months ago
 ```
 
 ### For Faster Execution

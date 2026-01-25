@@ -30,7 +30,7 @@ A comprehensive Google Apps Script for analyzing, managing, and automating your 
 - Updates all data with latest Gmail information
 - Refreshes: Pattern Analysis, Dashboard, Duplicates, Attachments, Reports, and Unsubscribe Links
 - Progress tracking with status notifications
-- Customizable time period (default: 90 days)
+- Customizable time period (default: 180 days)
 - Batch processing for efficiency
 
 ### 📊 Email Pattern Analysis
@@ -151,7 +151,7 @@ Updates all analysis sheets with the latest Gmail data in one click. This is use
 
 **Process:**
 1. Click the menu item
-2. Confirm the time period (default: last 90 days)
+2. Confirm the time period (default: last 180 days)
 3. Wait 2-5 minutes for completion
 4. All sheets now contain current data
 
@@ -165,7 +165,7 @@ Updates all analysis sheets with the latest Gmail data in one click. This is use
 
 **Menu:** Gmail Analyzer > 📊 Analyze Email Patterns
 
-This analyzes the last 90 days of emails and creates a report showing:
+This analyzes the last 180 days of emails and creates a report showing:
 - Each sender's email and name
 - Total email count from each sender
 - Date range of emails
@@ -402,7 +402,7 @@ Creates an interactive visual analytics dashboard with charts and graphs:
 - Professional presentation-ready visualizations
 
 **Features:**
-- Analyzes last 90 days (configurable)
+- Analyzes last 180 days (configurable)
 - Color-coded charts
 - Export-ready format
 - Great for reports and presentations
@@ -461,7 +461,7 @@ You can modify the configuration constants at the top of the script:
 ```javascript
 const CONFIG = {
   MAX_THREADS: 500,           // Maximum threads to process per run
-  DAYS_TO_ANALYZE: 90,        // Default days to analyze
+  DAYS_TO_ANALYZE: 180,       // Default days to analyze (6 months)
   BATCH_SIZE: 100,            // Batch size for processing
   REPORT_FOLDER: 'Gmail Reports', // Folder name for reports
   DUPLICATE_TIME_WINDOW: 300, // Seconds to consider emails as duplicates (5 min)
@@ -481,7 +481,7 @@ To analyze different time periods, you can modify the `DAYS_TO_ANALYZE` value, o
 You can run functions directly from the Apps Script editor with custom parameters:
 
 ```javascript
-// Analyze last 30 days instead of default 90
+// Analyze last 30 days instead of default 180
 analyzeEmailPatterns(30);
 
 // Export last 7 days

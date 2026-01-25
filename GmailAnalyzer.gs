@@ -16,7 +16,7 @@
 // Configuration
 const CONFIG = {
   MAX_THREADS: 500,           // Maximum threads to process per run
-  DAYS_TO_ANALYZE: 90,        // Default days to analyze
+  DAYS_TO_ANALYZE: 180,       // Default days to analyze (6 months)
   BATCH_SIZE: 100,            // Batch size for processing
   REPORT_FOLDER: 'Gmail Reports', // Folder name for reports
   DUPLICATE_TIME_WINDOW: 300, // Seconds to consider emails as duplicates (5 min)
@@ -166,7 +166,7 @@ function refreshAllAnalysesCustom() {
   const response = ui.prompt(
     'Custom Refresh Period',
     'How many days back should we analyze?\n\n' +
-    '(Default: 90 days, Max recommended: 365 days)',
+    '(Default: 180 days, Max recommended: 365 days)',
     ui.ButtonSet.OK_CANCEL
   );
 
