@@ -64,7 +64,7 @@ Step 4: Customize!
    ↓    Modify code for your needs
 ```
 
-**Start here:** [README.md](README.md)
+**Start here:** [README.md](../README.md)
 
 ---
 
@@ -81,7 +81,7 @@ Step 4: Customize!
 ### Core Documentation
 | File | Purpose | When to Read |
 |------|---------|--------------|
-| **[README.md](README.md)** | Complete manual | Reference for all features |
+| **[README.md](../README.md)** | Complete manual | Reference for all features |
 | **[DUPLICATE_DETECTION.md](DUPLICATE_DETECTION.md)** | Duplicate email guide | When using duplicate feature |
 | **[ATTACHMENT_MANAGER.md](ATTACHMENT_MANAGER.md)** | Attachment & Drive backup | When managing attachments |
 | **[EXAMPLES.md](EXAMPLES.md)** | Advanced examples & scripts | For customization |
@@ -161,7 +161,7 @@ Step 4: Customize!
 ### Step 1: Check Documentation
 - **Installation problems?** → [BEGINNER_GUIDE.md](BEGINNER_GUIDE.md)
 - **GitHub issues?** → [GITHUB_GUIDE.md](GITHUB_GUIDE.md)
-- **Feature questions?** → [README.md](README.md)
+- **Feature questions?** → [README.md](../README.md)
 - **Common errors?** → See "Troubleshooting" sections
 
 ### Step 2: Check Logs
@@ -320,7 +320,7 @@ Pick your level and jump in:
 - Learn by doing
 
 ### 👨‍💻 Developer
-**Read:** [README.md](README.md)
+**Read:** [README.md](../README.md)
 - Technical details
 - All configuration options
 - API reference
@@ -333,7 +333,7 @@ Pick your level and jump in:
 |--------------|----------|
 | Installation help | [BEGINNER_GUIDE.md](BEGINNER_GUIDE.md) |
 | GitHub help | [GITHUB_GUIDE.md](GITHUB_GUIDE.md) |
-| Feature questions | [README.md](README.md) |
+| Feature questions | [README.md](../README.md) |
 | Duplicate detection | [DUPLICATE_DETECTION.md](DUPLICATE_DETECTION.md) |
 | Advanced usage | [EXAMPLES.md](EXAMPLES.md) |
 | Bug reports | GitHub Issues tab |
